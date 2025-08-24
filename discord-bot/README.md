@@ -1,29 +1,29 @@
 # Kishax Discord Bot (AWS版)
 
-## 告知
+## Note
 このレポジトリは、[Kishax/infrastructure](https://github.com/Kishax/infrastructure) にて使われています。
 
-## アーキテクチャ
+## Architecture
 
 ```
 App → API Gateway → Lambda → SQS → ECS(Discord Bot)
 ```
 
-## 構成要素
+## Components
 
 - **API Gateway**: 外部からのリクエストを受付
 - **Lambda**: リクエストを処理してSQSにメッセージを送信
 - **SQS**: 非同期処理キュー（メッセージの平準化）
 - **ECS Fargate**: Discord Bot常駐（WebSocket接続維持）
 
-## 特徴
+## Feature
 
 - ✅ **AWS Native**: ECS + SQS + API Gateway
 - ✅ **スケーラブル**: 各サービスが独立してスケール可能
 - ✅ **安定接続**: ECSで安定したWebSocket接続維持
 - ✅ **コスト最適**: Lambdaは瞬間処理で課金最小
 
-## プロジェクト構造
+## Tree
 
 ```
 discord-bot/
@@ -45,7 +45,7 @@ discord-bot/
 ├── Dockerfile                       # Dockerイメージ定義
 └── build.gradle                     # ビルド設定
 ```
-## クイックスタート
+## QuickStart
 
 ```bash
 cp .env.example .env
