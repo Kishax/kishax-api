@@ -1,5 +1,8 @@
 # Kishax Discord Bot (AWS版)
 
+## 告知
+このレポジトリは、[Kishax/infrastructure](https://github.com/Kishax/infrastructure) にて使われています。
+
 ## アーキテクチャ
 
 ```
