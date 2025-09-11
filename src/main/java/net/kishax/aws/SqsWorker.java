@@ -26,17 +26,15 @@ public class SqsWorker {
   private final String queueUrl;
   private final ObjectMapper objectMapper;
   private final RedisClient redisClient;
-  private final DatabaseClient databaseClient;
   private final WebToMcMessageSender webToMcSender;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
-  public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient, DatabaseClient databaseClient,
+  public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient,
       WebToMcMessageSender webToMcSender) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.redisClient = redisClient;
-    this.databaseClient = databaseClient;
     this.webToMcSender = webToMcSender;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
@@ -170,7 +168,7 @@ public class SqsWorker {
   }
 
   /**
-   * Handle auth token message
+   * Handle auth token message - forward to Redis pub/sub for Web to handle
    */
   private void handleAuthTokenMessage(JsonNode data) {
     try {
@@ -181,8 +179,18 @@ public class SqsWorker {
 
       logger.info("🎮 Processing auth token for player: {} ({})", mcid, uuid);
 
-      // Save to database via DatabaseClient
-      databaseClient.upsertMinecraftPlayer(mcid, uuid, authToken, Instant.ofEpochMilli(expiresAt));
+      // Forward auth token to Web via Redis pub/sub
+      AuthTokenData authTokenData = new AuthTokenData(mcid, uuid, authToken, expiresAt);
+      
+      // Save to Redis with TTL (for Web to pick up)
+      String key = String.format("auth_token:%s_%s", mcid, uuid);
+      redisClient.setWithTtl(key, authTokenData, 600); // 10 minutes TTL
+      logger.info("📝 Auth token saved to Redis: {}", key);
+      
+      // Publish to Redis Pub/Sub for real-time notifications
+      String channelName = String.format("auth_token:%s_%s", mcid, uuid);
+      redisClient.publish(channelName, authTokenData);
+      logger.info("📡 Published auth token notification: {}", channelName);
 
       logger.info("✅ Successfully processed auth token for player: {}", mcid);
     } catch (Exception error) {
@@ -321,6 +329,28 @@ public class SqsWorker {
       logger.debug("🗑️ Message deleted: {}", message.messageId());
     } catch (Exception error) {
       logger.error("❌ Error deleting SQS message: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Auth Token data class
+   */
+  public static class AuthTokenData {
+    public final String mcid;
+    public final String uuid;
+    public final String authToken;
+    public final long expiresAt;
+
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public AuthTokenData(
+        @com.fasterxml.jackson.annotation.JsonProperty("mcid") String mcid,
+        @com.fasterxml.jackson.annotation.JsonProperty("uuid") String uuid,
+        @com.fasterxml.jackson.annotation.JsonProperty("authToken") String authToken,
+        @com.fasterxml.jackson.annotation.JsonProperty("expiresAt") long expiresAt) {
+      this.mcid = mcid;
+      this.uuid = uuid;
+      this.authToken = authToken;
+      this.expiresAt = expiresAt;
     }
   }
 

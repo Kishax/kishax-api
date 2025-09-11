@@ -177,13 +177,7 @@ public class Configuration {
       errors.append("Redis URL is required\n");
     }
 
-    // Web API configuration
-    if (getWebApiBaseUrl() == null || getWebApiBaseUrl().trim().isEmpty()) {
-      errors.append("Web API Base URL is required\n");
-    }
-    if (getInternalApiKey() == null || getInternalApiKey().trim().isEmpty()) {
-      logger.warn("⚠️ Internal API Key is not configured - API calls may fail");
-    }
+    // Web API configuration - not required anymore since we use Redis only
 
     if (errors.length() > 0) {
       throw new ConfigurationException("Configuration validation failed:\n" + errors.toString());
