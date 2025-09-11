@@ -2,7 +2,7 @@ services:
   # Redis for pub/sub communication between Java and TypeScript
   redis:
     image: redis:7-alpine
-    container_name: kishax-redis
+    container_name: kishax-aws-redis
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
