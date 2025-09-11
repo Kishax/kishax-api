@@ -1,6 +1,6 @@
 # Kishax AWS Integration - Simple Test Commands
 
-.PHONY: test-local test-prod
+.PHONY: test-local test-prod publish
 
 # Test with LocalStack (development)
 test-local:
@@ -28,3 +28,9 @@ test-prod:
 	@cp .env.prod .env
 	@echo "⚠️  Make sure .env.prod has your real AWS credentials!"
 	RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
+
+# Publish to Maven local repository
+publish:
+	@echo "📦 Publishing kishax-aws to Maven local repository..."
+	mvn clean install -DskipTests
+	@echo "✅ kishax-aws published successfully to ~/.m2/repository/"
