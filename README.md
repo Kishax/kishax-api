@@ -1,200 +1,195 @@
 # Kishax AWS Integration
 
-Javaベースの AWS SQS ワーカーと Redis Pub/Sub ライブラリです。既存の Node.js `sqs-worker.js` の代替として設計されています。
+AWS SQS and Redis integration library for Kishax Minecraft infrastructure. This library replaces the Node.js sqs-worker with a Java-based solution that enables communication between Minecraft plugins and the web application.
 
-## 概要
-
-このライブラリは以下の機能を提供します：
-
-- **SQS Worker**: MC → Web 方向のメッセージ処理
-- **Redis Client**: Pub/Sub 通信とデータ保存
-- **Database Client**: Web API 経由でのデータベース操作
-
-## アーキテクチャ
+## Architecture
 
 ```
-MC (Java) → SQS → SqsWorker (Java) → Redis Pub/Sub → Next.js (TypeScript)
-                         ↓
-                   Web API (HTTP) → Database
+MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web App (TypeScript)
 ```
 
-## 主要コンポーネント
+- **MC → Web**: SQS messages processed by Java worker, stored in Redis, published to pub/sub
+- **Web → MC**: Messages sent via SQS, polled by MC plugins
+- **Real-time communication**: Redis pub/sub between Java worker and TypeScript web app
 
-### SqsWorker
-- SQS からのメッセージをポーリング
-- 認証トークン、OTP レスポンス、Web 認証レスポンスを処理
-- メッセージ処理後に自動削除
+## Quick Start
 
-### RedisClient
-- Lettuce を使用した Redis 接続管理
-- Pub/Sub メッセージングとデータ保存
-- TTL 付きデータ保存とリアルタイム通知
+### Development Testing (LocalStack)
 
-### DatabaseClient
-- HTTP API 経由でのデータベース操作
-- MinecraftPlayer レコードの UPSERT
-- OTP 更新と認証確認
+1. **Start services:**
+   ```bash
+   docker compose up
+   ```
 
-### Configuration
-- 環境変数とプロパティファイルからの設定読み込み
-- AWS、Redis、Web API の設定管理
-- 設定値のバリデーション
+2. **Run integration tests:**
+   ```bash
+   RUN_INTEGRATION_TESTS=true mvn test -Dtest=LocalStackIntegrationTest
+   ```
 
-## 設定
+### Production Testing (Real AWS)
 
-### 環境変数
+1. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your AWS credentials and queue URLs
+   ```
 
+2. **Run real AWS tests:**
+   ```bash
+   RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
+   ```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `AWS_ACCESS_KEY_ID` | AWS access key | Yes (prod) |
+| `AWS_SECRET_ACCESS_KEY` | AWS secret key | Yes (prod) |
+| `AWS_DEFAULT_REGION` | AWS region | Yes (prod) |
+| `MC_WEB_SQS_QUEUE_URL` | MC→Web SQS queue URL | Yes |
+| `WEB_MC_SQS_QUEUE_URL` | Web→MC SQS queue URL | Yes |
+| `REDIS_URL` | Redis connection URL | Yes |
+| `WEB_API_BASE_URL` | Next.js web app base URL | Yes |
+| `INTERNAL_API_KEY` | API key for web app auth | Yes |
+
+### Message Types
+
+#### MC → Web (via SQS)
+- `auth_token`: Authentication token from MC plugin
+- `mc_otp_response`: OTP verification response
+- `mc_web_auth_response`: Web authentication response
+
+#### Web → MC (via SQS)
+- Messages are polled by MC plugins directly
+
+## Usage
+
+### Java Worker Application
+
+```java
+Configuration config = new Configuration();
+SqsWorker worker = new SqsWorker(config);
+worker.start(); // Starts polling SQS queues
+```
+
+### Redis Client
+
+```java
+RedisClient redis = new RedisClient("redis://localhost:6379");
+
+// Store with TTL
+redis.setWithTtl("key", data, 300);
+
+// Retrieve
+MyData data = redis.get("key", MyData.class);
+
+// Pub/Sub
+redis.publish("channel", message);
+CompletableFuture<MyData> future = redis.waitForMessage("channel", MyData.class, Duration.ofSeconds(10));
+```
+
+### Database Client (Web API)
+
+```java
+DatabaseClient db = new DatabaseClient("http://localhost:3000");
+
+// Upsert player
+db.upsertMinecraftPlayer("playerName", "uuid", "token", tokenExpires);
+
+// Update OTP
+db.updatePlayerOtp("playerName", "123456", otpExpires);
+
+// Confirm auth
+db.confirmPlayerAuthentication("playerName", "uuid");
+```
+
+## Testing
+
+### Unit Tests
 ```bash
-# AWS Configuration
-AWS_REGION=ap-northeast-1
-MC_WEB_SQS_ACCESS_KEY_ID=your-access-key
-MC_WEB_SQS_SECRET_ACCESS_KEY=your-secret-key
-MC_TO_WEB_QUEUE_URL=https://sqs.region.amazonaws.com/account/queue-name
-
-# Redis Configuration
-REDIS_URL=redis://localhost:6379
-
-# Web API Configuration
-WEB_API_BASE_URL=http://localhost:3000
-INTERNAL_API_KEY=your-internal-api-key
-
-# Worker Configuration
-SQS_WORKER_ENABLED=true
-LOG_LEVEL=INFO
+mvn test
 ```
 
-### プロパティファイル
-
-`src/main/resources/application.properties` でデフォルト値を設定可能。
-
-## 使用方法
-
-### スタンドアロン実行
-
+### Integration Tests (LocalStack)
 ```bash
-# ビルド
+RUN_INTEGRATION_TESTS=true mvn test -Dtest=LocalStackIntegrationTest
+```
+
+### Integration Tests (Real AWS)
+```bash
+RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
+```
+
+### Docker Test Environment
+```bash
+docker compose --profile test up
+```
+
+## Building
+
+### Regular JAR
+```bash
 mvn clean package
+```
 
-# 実行
+### Fat JAR (with dependencies)
+```bash
+mvn clean package
+# Produces: target/kishax-aws-1.0.0-SNAPSHOT-with-dependencies.jar
+```
+
+### Running the Application
+```bash
 java -jar target/kishax-aws-1.0.0-SNAPSHOT-with-dependencies.jar
 ```
 
-### ライブラリとして使用
+## Docker Services
 
-```java
-// 設定の読み込み
-Configuration config = new Configuration();
-config.validate();
+### Development Stack
+- **Redis**: `redis:7-alpine` on port 6379
+- **LocalStack**: `localstack/localstack:3.0` on port 4566
+  - Provides: SQS, S3, CloudFormation, IAM
 
-// クライアントの作成
-SqsClient sqsClient = config.createSqsClient();
-RedisClient redisClient = config.createRedisClient();
-DatabaseClient databaseClient = config.createDatabaseClient();
+### Health Checks
+- Redis: `redis-cli ping`
+- LocalStack: `curl -f http://localhost:4566/health`
 
-// SQS Worker の開始
-SqsWorker worker = new SqsWorker(
-    sqsClient, 
-    config.getMcToWebQueueUrl(), 
-    redisClient, 
-    databaseClient
-);
+## Security
 
-worker.start();
+- All credentials are loaded from environment variables
+- No hardcoded secrets in the codebase
+- API authentication for web app communication
+- AWS IAM roles recommended for production
 
-// 終了時のクリーンアップ
-worker.stop();
-redisClient.close();
-databaseClient.close();
-sqsClient.close();
+## Requirements
+
+- Java 21+
+- Maven 3.6+
+- Docker & Docker Compose (for testing)
+- Redis (local or remote)
+- AWS SQS queues (real or LocalStack)
+
+## Dependencies
+
+- AWS SDK for Java v2
+- Lettuce Redis Client
+- Jackson JSON processing
+- SLF4J + Logback logging
+- JUnit 5 + Mockito + TestContainers
+
+## Publishing to Maven
+
+This package is intended to be published to Maven Central as `net.kishax:kishax-aws`.
+
+```xml
+<dependency>
+    <groupId>net.kishax</groupId>
+    <artifactId>kishax-aws</artifactId>
+    <version>1.0.0</version>
+</dependency>
 ```
-
-## mc-plugins での使用
-
-### build.gradle への依存関係追加
-
-```gradle
-dependencies {
-    implementation 'net.kishax:kishax-aws:1.0.0-SNAPSHOT'
-    // 他の依存関係...
-}
-```
-
-### Java コードでの使用例
-
-```java
-// SQS Worker の初期化と開始
-Configuration config = new Configuration();
-SqsWorker worker = new SqsWorker(
-    config.createSqsClient(),
-    config.getMcToWebQueueUrl(),
-    config.createRedisClient(),
-    config.createDatabaseClient()
-);
-
-worker.start();
-
-// Redis Pub/Sub での通信
-RedisClient redis = config.createRedisClient();
-redis.publish("channel", messageObject);
-
-// メッセージ待機
-CompletableFuture<Message> future = redis.waitForMessage(
-    "response_channel", 
-    Message.class, 
-    Duration.ofSeconds(30)
-);
-```
-
-## Docker での実行
-
-### ECS 環境での Java + TypeScript 同居
-
-```dockerfile
-# Multi-stage build example
-FROM openjdk:17-jdk-slim as java-builder
-COPY apps/kishax-aws /workspace
-WORKDIR /workspace
-RUN mvn clean package
-
-FROM node:18-alpine as node-builder
-COPY apps/web /workspace
-WORKDIR /workspace
-RUN npm install && npm run build
-
-FROM node:18-alpine
-# Install Java runtime
-RUN apk add --no-cache openjdk17-jre
-
-# Copy built artifacts
-COPY --from=java-builder /workspace/target/kishax-aws-*.jar /app/
-COPY --from=node-builder /workspace/.next /app/.next
-COPY --from=node-builder /workspace/node_modules /app/node_modules
-
-# Start both services
-CMD ["sh", "-c", "java -jar /app/kishax-aws-*.jar & npm start"]
-```
-
-## テスト
-
-```bash
-# ユニットテスト
-mvn test
-
-# 統合テスト（TestContainers で Redis/LocalStack 使用）
-mvn verify
-
-# 特定のテストクラス実行
-mvn test -Dtest=SqsWorkerTest
-```
-
-## 開発
-
-### 前提条件
-
-- Java 17+
-- Maven 3.8+
-- Redis (開発・テスト用)
-- AWS SQS (本番環境)
 
 ### ビルド
 
