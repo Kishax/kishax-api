@@ -52,8 +52,6 @@ MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web 
 | `MC_WEB_SQS_QUEUE_URL` | MC→Web SQS queue URL | Yes |
 | `WEB_MC_SQS_QUEUE_URL` | Web→MC SQS queue URL | Yes |
 | `REDIS_URL` | Redis connection URL | Yes |
-| `WEB_API_BASE_URL` | Next.js web app base URL | Yes |
-| `INTERNAL_API_KEY` | API key for web app auth | Yes |
 
 ### Message Types
 
@@ -89,21 +87,6 @@ MyData data = redis.get("key", MyData.class);
 // Pub/Sub
 redis.publish("channel", message);
 CompletableFuture<MyData> future = redis.waitForMessage("channel", MyData.class, Duration.ofSeconds(10));
-```
-
-### Database Client (Web API)
-
-```java
-DatabaseClient db = new DatabaseClient("http://localhost:3000");
-
-// Upsert player
-db.upsertMinecraftPlayer("playerName", "uuid", "token", tokenExpires);
-
-// Update OTP
-db.updatePlayerOtp("playerName", "123456", otpExpires);
-
-// Confirm auth
-db.confirmPlayerAuthentication("playerName", "uuid");
 ```
 
 ## Testing

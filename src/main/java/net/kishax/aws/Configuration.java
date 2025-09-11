@@ -117,15 +117,6 @@ public class Configuration {
     return getIntProperty("redis.commandTimeout", 3000);
   }
 
-  // Web API Configuration
-  public String getWebApiBaseUrl() {
-    return getProperty("web.api.baseUrl", "http://localhost:3000");
-  }
-
-  public String getInternalApiKey() {
-    return getProperty("web.api.internalKey");
-  }
-
   // SQS Worker Configuration
   public boolean isSqsWorkerEnabled() {
     return getBooleanProperty("sqs.worker.enabled", true);
@@ -202,13 +193,6 @@ public class Configuration {
    */
   public RedisClient createRedisClient() {
     return new RedisClient(getRedisUrl());
-  }
-
-  /**
-   * Create configured Database client
-   */
-  public DatabaseClient createDatabaseClient() {
-    return new DatabaseClient(getWebApiBaseUrl());
   }
 
   /**

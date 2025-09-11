@@ -181,12 +181,12 @@ public class SqsWorker {
 
       // Forward auth token to Web via Redis pub/sub
       AuthTokenData authTokenData = new AuthTokenData(mcid, uuid, authToken, expiresAt);
-      
+
       // Save to Redis with TTL (for Web to pick up)
       String key = String.format("auth_token:%s_%s", mcid, uuid);
       redisClient.setWithTtl(key, authTokenData, 600); // 10 minutes TTL
       logger.info("📝 Auth token saved to Redis: {}", key);
-      
+
       // Publish to Redis Pub/Sub for real-time notifications
       String channelName = String.format("auth_token:%s_%s", mcid, uuid);
       redisClient.publish(channelName, authTokenData);

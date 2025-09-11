@@ -13,7 +13,6 @@ public class SqsWorkerApplication {
 
   private SqsWorker sqsWorker;
   private RedisClient redisClient;
-  private DatabaseClient databaseClient;
   private SqsClient sqsClient;
 
   public static void main(String[] args) {
@@ -37,7 +36,6 @@ public class SqsWorkerApplication {
       // Initialize clients
       this.sqsClient = config.createSqsClient();
       this.redisClient = config.createRedisClient();
-      this.databaseClient = config.createDatabaseClient();
 
       // Create WebToMcMessageSender
       WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getWebToMcQueueUrl());
@@ -47,7 +45,6 @@ public class SqsWorkerApplication {
           sqsClient,
           config.getMcToWebQueueUrl(),
           redisClient,
-          databaseClient,
           webToMcSender);
 
       // Set up shutdown hook
@@ -82,11 +79,6 @@ public class SqsWorkerApplication {
       if (redisClient != null) {
         redisClient.close();
         logger.info("✅ Redis client closed");
-      }
-
-      if (databaseClient != null) {
-        databaseClient.close();
-        logger.info("✅ Database client closed");
       }
 
       if (sqsClient != null) {

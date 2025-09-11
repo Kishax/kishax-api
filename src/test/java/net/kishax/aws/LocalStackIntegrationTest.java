@@ -75,15 +75,11 @@ class LocalStackIntegrationTest {
     String redisUrl = String.format("redis://localhost:%d", redis.getMappedPort(6379));
     redisClient = new RedisClient(redisUrl);
 
-    // Setup test configuration
-    // Create DatabaseClient for tests
-    DatabaseClient databaseClient = new DatabaseClient("http://localhost:3000");
-
     // Create WebToMcMessageSender
     webToMcSender = new WebToMcMessageSender(sqsClient, webMcQueueUrl);
 
     // Setup SqsWorker with direct dependencies
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient, webToMcSender);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, webToMcSender);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());

@@ -27,9 +27,6 @@ class SqsWorkerTest {
   @Mock
   private RedisClient redisClient;
 
-  @Mock
-  private DatabaseClient databaseClient;
-
   private SqsWorker sqsWorker;
   private final String testQueueUrl = "https://sqs.ap-northeast-1.amazonaws.com/123456789012/test-queue";
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -37,7 +34,7 @@ class SqsWorkerTest {
   @BeforeEach
   void setUp() {
     WebToMcMessageSender webToMcSender = mock(WebToMcMessageSender.class);
-    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, databaseClient, webToMcSender);
+    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, webToMcSender);
   }
 
   @Test
@@ -88,13 +85,6 @@ class SqsWorkerTest {
     sqsWorker.start();
     Thread.sleep(200); // Give it time to process
     sqsWorker.stop();
-
-    // Verify database client was called
-    verify(databaseClient, atLeastOnce()).upsertMinecraftPlayer(
-        eq("testPlayer"),
-        eq("550e8400-e29b-41d4-a716-446655440000"),
-        eq("test-auth-token-123"),
-        eq(Instant.ofEpochMilli(1234567890000L)));
 
     // Verify message was deleted
     verify(sqsClient, atLeastOnce()).deleteMessage(any(DeleteMessageRequest.class));
@@ -183,8 +173,7 @@ class SqsWorkerTest {
     // Verify message was still deleted (to prevent reprocessing)
     verify(sqsClient, atLeastOnce()).deleteMessage(any(DeleteMessageRequest.class));
 
-    // Verify no database or Redis operations were performed
-    verifyNoInteractions(databaseClient);
+    // Verify Redis operations were performed
     verifyNoInteractions(redisClient);
   }
 
@@ -209,8 +198,7 @@ class SqsWorkerTest {
     Thread.sleep(200); // Give it time to process
     sqsWorker.stop();
 
-    // Verify no database or Redis operations were performed
-    verifyNoInteractions(databaseClient);
+    // Verify Redis operations were performed
     verifyNoInteractions(redisClient);
 
     // Verify message was not deleted (because it wasn't processed)
@@ -233,7 +221,6 @@ class SqsWorkerTest {
     sqsWorker.stop();
 
     // Verify no operations were performed
-    verifyNoInteractions(databaseClient);
     verifyNoInteractions(redisClient);
     verify(sqsClient, never()).deleteMessage(any(DeleteMessageRequest.class));
   }

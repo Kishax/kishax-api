@@ -19,8 +19,8 @@ services:
     image: localstack/localstack:3.0
     container_name: kishax-localstack
     ports:
-      - "4566:4566"  # LocalStack gateway
-      - "4510-4559:4510-4559"  # External services port range
+      - "4566:4566" # LocalStack gateway
+      - "4510-4559:4510-4559" # External services port range
     environment:
       - SERVICES=sqs,s3,cloudformation,iam
       - DEBUG=1
@@ -60,8 +60,6 @@ services:
       # Application configuration
       - MC_WEB_SQS_QUEUE_URL=http://localstack:4566/000000000000/mc-web-queue
       - WEB_MC_SQS_QUEUE_URL=http://localstack:4566/000000000000/web-mc-queue
-      - WEB_API_BASE_URL=http://localhost:3000
-      - INTERNAL_API_KEY=test-api-key
       - LOG_LEVEL=DEBUG
     volumes:
       - .:/app
@@ -71,3 +69,4 @@ services:
 
 volumes:
   redis-data:
+

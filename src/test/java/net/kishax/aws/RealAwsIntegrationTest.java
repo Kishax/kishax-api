@@ -68,9 +68,8 @@ class RealAwsIntegrationTest {
     redisClient = configuration.createRedisClient();
 
     // Setup SqsWorker
-    DatabaseClient databaseClient = configuration.createDatabaseClient();
     webToMcSender = new WebToMcMessageSender(sqsClient, webMcQueueUrl);
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient, webToMcSender);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, webToMcSender);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());

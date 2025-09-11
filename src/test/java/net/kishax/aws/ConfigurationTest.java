@@ -55,7 +55,6 @@ class ConfigurationTest {
     // Test that default values are returned for various configuration keys
     assertEquals("ap-northeast-1", configuration.getAwsRegion());
     assertEquals("redis://localhost:6379", configuration.getRedisUrl());
-    assertEquals("http://localhost:3000", configuration.getWebApiBaseUrl());
     assertTrue(configuration.isSqsWorkerEnabled());
     assertEquals(5, configuration.getSqsWorkerPollingInterval());
     assertEquals(10, configuration.getSqsWorkerMaxMessages());
@@ -94,16 +93,6 @@ class ConfigurationTest {
       RedisClient client = configuration.createRedisClient();
       assertNotNull(client);
       // Don't actually test connection since Redis may not be running
-      client.close(); // Clean up
-    });
-  }
-
-  @Test
-  void testCreateDatabaseClient() {
-    // This should work with default Web API URL
-    assertDoesNotThrow(() -> {
-      DatabaseClient client = configuration.createDatabaseClient();
-      assertNotNull(client);
       client.close(); // Clean up
     });
   }
