@@ -74,40 +74,11 @@ class LocalStackIntegrationTest {
     redisClient = new RedisClient(redisUrl);
 
     // Setup test configuration
-    Configuration testConfig = new Configuration() {
-      @Override
-      public String getMcWebSqsQueueUrl() {
-        return mcWebQueueUrl;
-      }
+    // Create DatabaseClient for tests
+    DatabaseClient databaseClient = new DatabaseClient("http://localhost:3000");
 
-      @Override
-      public String getWebMcSqsQueueUrl() {
-        return webMcQueueUrl;
-      }
-
-      @Override
-      public String getRedisUrl() {
-        return redisUrl;
-      }
-
-      @Override
-      public String getWebApiBaseUrl() {
-        return "http://localhost:3000";
-      }
-
-      @Override
-      public SqsClient createSqsClient() {
-        return sqsClient;
-      }
-
-      @Override
-      public RedisClient createRedisClient() {
-        return redisClient;
-      }
-    };
-
-    // Setup SqsWorker with test configuration
-    sqsWorker = new SqsWorker(testConfig);
+    // Setup SqsWorker with direct dependencies
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
@@ -139,32 +110,41 @@ class LocalStackIntegrationTest {
     messagePayload.put("type", "mc_otp_response");
     messagePayload.put("mcid", "testPlayer");
     messagePayload.put("uuid", "test-uuid-123");
-    messagePayload.put("otp", "123456");
+    messagePayload.put("success", true);
+    messagePayload.put("message", "OTP verified successfully");
     messagePayload.put("timestamp", Instant.now().toEpochMilli());
 
     // Send message to MC → Web queue
+    String messageBody = objectMapper.writeValueAsString(messagePayload);
+    System.out.println("Sending SQS message: " + messageBody);
+    System.out.println("Queue URL: " + mcWebQueueUrl);
+
     sqsClient.sendMessage(SendMessageRequest.builder()
         .queueUrl(mcWebQueueUrl)
-        .messageBody(objectMapper.writeValueAsString(messagePayload))
+        .messageBody(messageBody)
         .build());
 
+    System.out.println("SQS message sent successfully");
+
     // Wait for message to be processed and stored in Redis
-    String redisKey = "otp_response:testPlayer";
+    String redisKey = "otp_response:testPlayer_test-uuid-123";
     SqsWorker.OtpResponse storedResponse = null;
-    
+
     // Poll Redis for the stored response (with timeout)
+    System.out.println("Waiting for Redis key: " + redisKey);
     for (int i = 0; i < 10; i++) {
       storedResponse = redisClient.get(redisKey, SqsWorker.OtpResponse.class);
       if (storedResponse != null) {
+        System.out.println("Found stored response after " + (i + 1) + " attempts");
         break;
       }
+      System.out.println("Attempt " + (i + 1) + ": Key not found, waiting...");
       Thread.sleep(500);
     }
 
     // Verify the response was stored in Redis
     assertNotNull(storedResponse, "OTP response should be stored in Redis");
     assertTrue(storedResponse.success);
-    assertEquals("testPlayer", storedResponse.mcid);
     assertTrue(storedResponse.received);
 
     // Stop worker
@@ -202,10 +182,10 @@ class LocalStackIntegrationTest {
         .build()).messages();
 
     assertFalse(messages.isEmpty(), "Message should be available in Web → MC queue");
-    
+
     Message receivedMessage = messages.get(0);
     ObjectNode receivedPayload = (ObjectNode) objectMapper.readTree(receivedMessage.body());
-    
+
     assertEquals("auth_token", receivedPayload.get("type").asText());
     assertEquals("authTestPlayer", receivedPayload.get("mcid").asText());
     assertEquals("test-auth-token-789", receivedPayload.get("token").asText());
@@ -218,7 +198,9 @@ class LocalStackIntegrationTest {
   void testRedisPubSubCommunication() throws Exception {
     String testChannel = "test_channel";
     SqsWorker.OtpResponse testMessage = new SqsWorker.OtpResponse(
-        true, "Test pub/sub message", System.currentTimeMillis(), true, "testMcid");
+        true, "Test pub/sub message", System.currentTimeMillis(), true);
+
+    System.out.println("Testing Redis pub/sub with channel: " + testChannel);
 
     // Start waiting for message
     CompletableFuture<SqsWorker.OtpResponse> future = redisClient.waitForMessage(
@@ -227,33 +209,59 @@ class LocalStackIntegrationTest {
     // Give subscription time to establish
     Thread.sleep(100);
 
+    System.out.println("Publishing message to channel: " + testChannel);
+
     // Publish message
-    redisClient.publish(testChannel, testMessage);
+    try {
+      redisClient.publish(testChannel, testMessage);
+      System.out.println("Message published successfully");
+    } catch (Exception e) {
+      System.out.println("Failed to publish message: " + e.getMessage());
+      throw e;
+    }
 
     // Wait for result
-    SqsWorker.OtpResponse received = future.get(6, TimeUnit.SECONDS);
+    try {
+      SqsWorker.OtpResponse received = future.get(6, TimeUnit.SECONDS);
+      System.out.println("Received message: " + (received != null ? "SUCCESS" : "NULL"));
 
-    assertNotNull(received);
-    assertEquals(testMessage.success, received.success);
-    assertEquals(testMessage.message, received.message);
-    assertEquals(testMessage.mcid, received.mcid);
+      assertNotNull(received);
+      assertEquals(testMessage.success, received.success);
+      assertEquals(testMessage.message, received.message);
+    } catch (Exception e) {
+      System.out.println("Failed to receive message: " + e.getMessage());
+      throw e;
+    }
   }
 
   @Test
   void testRedisDataStorage() throws Exception {
     String testKey = "test_storage_key";
     SqsWorker.OtpResponse testData = new SqsWorker.OtpResponse(
-        true, "Test storage", System.currentTimeMillis(), true, "storageMcid");
+        true, "Test storage", System.currentTimeMillis(), true);
+
+    System.out.println("Testing Redis storage with key: " + testKey);
 
     // Store data with TTL
-    redisClient.setWithTtl(testKey, testData, 60);
+    try {
+      redisClient.setWithTtl(testKey, testData, 60);
+      System.out.println("Successfully stored data in Redis");
+    } catch (Exception e) {
+      System.out.println("Failed to store data in Redis: " + e.getMessage());
+      throw e;
+    }
 
     // Retrieve data
-    SqsWorker.OtpResponse retrieved = redisClient.get(testKey, SqsWorker.OtpResponse.class);
+    try {
+      SqsWorker.OtpResponse retrieved = redisClient.get(testKey, SqsWorker.OtpResponse.class);
+      System.out.println("Retrieved data from Redis: " + (retrieved != null ? "SUCCESS" : "NULL"));
 
-    assertNotNull(retrieved);
-    assertEquals(testData.success, retrieved.success);
-    assertEquals(testData.message, retrieved.message);
-    assertEquals(testData.mcid, retrieved.mcid);
+      assertNotNull(retrieved);
+      assertEquals(testData.success, retrieved.success);
+      assertEquals(testData.message, retrieved.message);
+    } catch (Exception e) {
+      System.out.println("Failed to retrieve data from Redis: " + e.getMessage());
+      throw e;
+    }
   }
 }

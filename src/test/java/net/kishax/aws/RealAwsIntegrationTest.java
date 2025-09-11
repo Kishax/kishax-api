@@ -32,8 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * WARNING: These tests will use real AWS resources and may incur costs!
  */
-@EnabledIfEnvironmentVariable(named = "RUN_REAL_AWS_TESTS", matches = "true", 
-    disabledReason = "Real AWS tests disabled. Set RUN_REAL_AWS_TESTS=true to enable.")
+@EnabledIfEnvironmentVariable(named = "RUN_REAL_AWS_TESTS", matches = "true", disabledReason = "Real AWS tests disabled. Set RUN_REAL_AWS_TESTS=true to enable.")
 class RealAwsIntegrationTest {
 
   private SqsClient sqsClient;
@@ -49,24 +48,27 @@ class RealAwsIntegrationTest {
   void setUp() throws Exception {
     // Load configuration from environment variables
     configuration = new Configuration();
-    
+
     // Validate required configuration
-    assertNotNull(configuration.getMcWebSqsQueueUrl(), 
+    assertNotNull(configuration.getMcToWebQueueUrl(),
         "MC_WEB_SQS_QUEUE_URL must be set for real AWS tests");
-    assertNotNull(configuration.getWebMcSqsQueueUrl(), 
-        "WEB_MC_SQS_QUEUE_URL must be set for real AWS tests");
-    assertNotNull(configuration.getRedisUrl(), 
+
+    // For Web→MC queue, get from environment directly
+    String webMcQueueFromEnv = System.getenv("WEB_MC_SQS_QUEUE_URL");
+    assertNotNull(webMcQueueFromEnv, "WEB_MC_SQS_QUEUE_URL must be set for real AWS tests");
+    assertNotNull(configuration.getRedisUrl(),
         "REDIS_URL must be set for real AWS tests");
 
-    mcWebQueueUrl = configuration.getMcWebSqsQueueUrl();
-    webMcQueueUrl = configuration.getWebMcSqsQueueUrl();
+    mcWebQueueUrl = configuration.getMcToWebQueueUrl();
+    webMcQueueUrl = System.getenv("WEB_MC_SQS_QUEUE_URL");
 
     // Create clients using real AWS configuration
     sqsClient = configuration.createSqsClient();
     redisClient = configuration.createRedisClient();
 
     // Setup SqsWorker
-    sqsWorker = new SqsWorker(configuration);
+    DatabaseClient databaseClient = configuration.createDatabaseClient();
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
@@ -106,7 +108,8 @@ class RealAwsIntegrationTest {
     messagePayload.put("type", "mc_otp_response");
     messagePayload.put("mcid", testMcid);
     messagePayload.put("uuid", "real-aws-test-uuid-" + System.currentTimeMillis());
-    messagePayload.put("otp", "654321");
+    messagePayload.put("success", true);
+    messagePayload.put("message", "OTP verified successfully");
     messagePayload.put("timestamp", Instant.now().toEpochMilli());
 
     System.out.println("📤 Sending OTP response message for: " + testMcid);
@@ -118,11 +121,11 @@ class RealAwsIntegrationTest {
         .build());
 
     // Wait for message to be processed and stored in Redis
-    String redisKey = "otp_response:" + testMcid;
+    String redisKey = "otp_response:" + testMcid + "_real-aws-test-uuid-" + System.currentTimeMillis();
     SqsWorker.OtpResponse storedResponse = null;
-    
+
     System.out.println("⏳ Waiting for message processing...");
-    
+
     // Poll Redis for the stored response (with longer timeout for real AWS)
     for (int i = 0; i < 20; i++) {
       storedResponse = redisClient.get(redisKey, SqsWorker.OtpResponse.class);
@@ -135,7 +138,6 @@ class RealAwsIntegrationTest {
     // Verify the response was stored in Redis
     assertNotNull(storedResponse, "OTP response should be stored in Redis");
     assertTrue(storedResponse.success);
-    assertEquals(testMcid, storedResponse.mcid);
     assertTrue(storedResponse.received);
 
     System.out.println("✅ OTP response successfully processed and stored in Redis");
@@ -175,10 +177,10 @@ class RealAwsIntegrationTest {
         .build()).messages();
 
     assertFalse(messages.isEmpty(), "Message should be available in real Web → MC queue");
-    
+
     Message receivedMessage = messages.get(0);
     ObjectNode receivedPayload = (ObjectNode) objectMapper.readTree(receivedMessage.body());
-    
+
     assertEquals("auth_token", receivedPayload.get("type").asText());
     assertEquals(testMcid, receivedPayload.get("mcid").asText());
     assertTrue(receivedPayload.get("token").asText().startsWith("real-aws-test-auth-token-"));
@@ -197,8 +199,7 @@ class RealAwsIntegrationTest {
 
     String testChannel = "real_aws_test_channel_" + System.currentTimeMillis();
     SqsWorker.OtpResponse testMessage = new SqsWorker.OtpResponse(
-        true, "Real AWS pub/sub test message", System.currentTimeMillis(), true, 
-        "realAwsPubSubTestMcid");
+        true, "Real AWS pub/sub test message", System.currentTimeMillis(), true);
 
     System.out.println("📡 Setting up pub/sub on channel: " + testChannel);
 
@@ -220,7 +221,7 @@ class RealAwsIntegrationTest {
     assertNotNull(received);
     assertEquals(testMessage.success, received.success);
     assertEquals(testMessage.message, received.message);
-    assertEquals(testMessage.mcid, received.mcid);
+    // Note: mcid field doesn't exist in OtpResponse
 
     System.out.println("✅ Real Redis pub/sub communication successful");
   }
@@ -231,8 +232,7 @@ class RealAwsIntegrationTest {
 
     String testKey = "real_aws_test_storage_key_" + System.currentTimeMillis();
     SqsWorker.OtpResponse testData = new SqsWorker.OtpResponse(
-        true, "Real AWS storage test", System.currentTimeMillis(), true, 
-        "realAwsStorageTestMcid");
+        true, "Real AWS storage test", System.currentTimeMillis(), true);
 
     System.out.println("💾 Storing data in Redis with key: " + testKey);
 
@@ -245,20 +245,21 @@ class RealAwsIntegrationTest {
     assertNotNull(retrieved, "Data should be retrievable immediately after storage");
     assertEquals(testData.success, retrieved.success);
     assertEquals(testData.message, retrieved.message);
-    assertEquals(testData.mcid, retrieved.mcid);
+    // Note: mcid field doesn't exist in OtpResponse
 
     System.out.println("✅ Data successfully stored and retrieved from real Redis");
 
     // Optional: Test TTL expiration (uncomment if you want to test this)
     /*
-    System.out.println("⏳ Waiting for TTL expiration...");
-    Thread.sleep(31000); // Wait for TTL to expire
-    
-    SqsWorker.OtpResponse expiredData = redisClient.get(testKey, SqsWorker.OtpResponse.class);
-    assertNull(expiredData, "Data should be null after TTL expiration");
-    
-    System.out.println("✅ TTL expiration working correctly");
-    */
+     * System.out.println("⏳ Waiting for TTL expiration...");
+     * Thread.sleep(31000); // Wait for TTL to expire
+     * 
+     * SqsWorker.OtpResponse expiredData = redisClient.get(testKey,
+     * SqsWorker.OtpResponse.class);
+     * assertNull(expiredData, "Data should be null after TTL expiration");
+     * 
+     * System.out.println("✅ TTL expiration working correctly");
+     */
   }
 
   @Test
@@ -271,7 +272,7 @@ class RealAwsIntegrationTest {
     // 3. Web app (simulated) receives via pub/sub
 
     String testMcid = "realAwsE2ETestPlayer_" + System.currentTimeMillis();
-    String pubSubChannel = "otp_response_channel";
+    String pubSubChannel = "otp_response:" + testMcid + "_real-aws-e2e-test-uuid";
 
     // Start the SQS worker
     CompletableFuture<Void> workerFuture = CompletableFuture.runAsync(() -> sqsWorker.start());
@@ -288,7 +289,8 @@ class RealAwsIntegrationTest {
     messagePayload.put("type", "mc_otp_response");
     messagePayload.put("mcid", testMcid);
     messagePayload.put("uuid", "real-aws-e2e-test-uuid");
-    messagePayload.put("otp", "999888");
+    messagePayload.put("success", true);
+    messagePayload.put("message", "End-to-end test OTP response");
     messagePayload.put("timestamp", Instant.now().toEpochMilli());
 
     System.out.println("📤 Sending end-to-end test message for: " + testMcid);
@@ -302,12 +304,11 @@ class RealAwsIntegrationTest {
     SqsWorker.OtpResponse pubSubResponse = pubSubFuture.get(20, TimeUnit.SECONDS);
 
     assertNotNull(pubSubResponse, "Should receive pub/sub message");
-    assertEquals(testMcid, pubSubResponse.mcid);
     assertTrue(pubSubResponse.success);
     assertTrue(pubSubResponse.received);
 
     // Also verify it was stored in Redis
-    String redisKey = "otp_response:" + testMcid;
+    String redisKey = "otp_response:" + testMcid + "_real-aws-e2e-test-uuid";
     SqsWorker.OtpResponse storedResponse = redisClient.get(redisKey, SqsWorker.OtpResponse.class);
     assertNotNull(storedResponse, "Should be stored in Redis");
 

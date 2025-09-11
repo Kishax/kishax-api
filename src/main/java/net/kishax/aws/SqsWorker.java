@@ -51,6 +51,7 @@ public class SqsWorker {
     if (running.compareAndSet(false, true)) {
       logger.info("🚀 Starting SQS Worker for auth tokens...");
       logger.info("📡 Polling queue: {}", queueUrl);
+      System.out.println("SQS Worker started - Queue URL: " + queueUrl);
 
       // Start polling with 5 second interval
       executor.scheduleWithFixedDelay(this::pollMessages, 0, 5, TimeUnit.SECONDS);
@@ -86,10 +87,11 @@ public class SqsWorker {
     }
 
     try {
+      System.out.println("SQS Worker: Polling for messages...");
       ReceiveMessageRequest request = ReceiveMessageRequest.builder()
           .queueUrl(queueUrl)
           .maxNumberOfMessages(10)
-          .waitTimeSeconds(20) // Long polling
+          .waitTimeSeconds(5) // Reduced wait time for testing
           .visibilityTimeout(30)
           .build();
 
@@ -98,13 +100,17 @@ public class SqsWorker {
 
       if (!messages.isEmpty()) {
         logger.info("📨 Received {} messages from SQS", messages.size());
+        System.out.println("SQS Worker: Received " + messages.size() + " messages");
 
         for (Message message : messages) {
           processMessage(message);
         }
+      } else {
+        System.out.println("SQS Worker: No messages received");
       }
     } catch (Exception error) {
       logger.error("❌ Error polling SQS messages: {}", error.getMessage(), error);
+      System.out.println("SQS Worker ERROR: " + error.getMessage());
     }
   }
 
@@ -186,13 +192,16 @@ public class SqsWorker {
 
       logger.info("🔐 Processing OTP response for player: {} ({}) - Success: {}", mcid, uuid, success);
       logger.info("📝 Response message: {}", message);
+      System.out.println("SQS Worker: Processing OTP response for " + mcid + " - " + uuid);
 
       // Save OTP response to Redis with TTL
       String key = String.format("otp_response:%s_%s", mcid, uuid);
       OtpResponse otpResponse = new OtpResponse(success, message, timestamp, true);
 
+      System.out.println("SQS Worker: Saving to Redis with key: " + key);
       redisClient.setWithTtl(key, otpResponse, 300); // 5 minutes TTL
       logger.info("📝 OTP response saved to Redis: {}", key);
+      System.out.println("SQS Worker: Successfully saved to Redis");
 
       // Publish to Redis Pub/Sub for real-time notifications
       String channelName = String.format("otp_response:%s_%s", mcid, uuid);
@@ -261,7 +270,12 @@ public class SqsWorker {
     public final long timestamp;
     public final boolean received;
 
-    public OtpResponse(boolean success, String message, long timestamp, boolean received) {
+    @com.fasterxml.jackson.annotation.JsonCreator
+    public OtpResponse(
+        @com.fasterxml.jackson.annotation.JsonProperty("success") boolean success,
+        @com.fasterxml.jackson.annotation.JsonProperty("message") String message,
+        @com.fasterxml.jackson.annotation.JsonProperty("timestamp") long timestamp,
+        @com.fasterxml.jackson.annotation.JsonProperty("received") boolean received) {
       this.success = success;
       this.message = message;
       this.timestamp = timestamp;
