@@ -16,27 +16,28 @@ MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web 
 
 ### Development Testing (LocalStack)
 
-1. **Start services:**
+1. **Configure environment:**
    ```bash
-   docker compose up
+   cp .env.local.example .env.local
+   # Edit .env.local if needed (optional for development)
    ```
 
-2. **Run integration tests:**
+2. **Run development tests:**
    ```bash
-   RUN_INTEGRATION_TESTS=true mvn test -Dtest=LocalStackIntegrationTest
+   make test-local
    ```
 
 ### Production Testing (Real AWS)
 
 1. **Configure environment:**
    ```bash
-   cp .env.example .env
-   # Edit .env with your AWS credentials and queue URLs
+   cp .env.prod.example .env.prod
+   # Edit .env.prod with your AWS credentials and queue URLs
    ```
 
-2. **Run real AWS tests:**
+2. **Run production tests:**
    ```bash
-   RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
+   make test-prod
    ```
 
 ## Configuration

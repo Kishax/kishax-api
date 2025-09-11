@@ -84,11 +84,9 @@ Desktop.ini
 application-local.properties
 application-dev.properties
 application-prod.properties
-*.env
 .env
 .env.local
-.env.development
-.env.production
+.env.prod
 
 # Credentials and secrets (safety net)
 **/credentials.*
