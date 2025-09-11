@@ -1,4 +1,5 @@
 # Kishax AWS Integration - Simple Test Commands
+include .env
 
 .PHONY: test-local test-prod publish
 
@@ -34,3 +35,8 @@ publish:
 	@echo "📦 Publishing kishax-aws to Sonatype repository..."
 	mvn clean deploy
 	@echo "✅ kishax-aws deployed successfully!"
+
+.PHONY: run
+run:
+	@echo "INFO: Starting Kishax AWS SQS Worker..."
+	@java -jar target/kishax-aws-1.0.0-with-dependencies.jar
