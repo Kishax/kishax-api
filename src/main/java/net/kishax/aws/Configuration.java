@@ -100,6 +100,10 @@ public class Configuration {
     return getProperty("aws.sqs.mcToWebQueueUrl");
   }
 
+  public String getWebToMcQueueUrl() {
+    return getProperty("aws.sqs.webToMcQueueUrl");
+  }
+
   // Redis Configuration
   public String getRedisUrl() {
     return getProperty("redis.url", "redis://localhost:6379");
@@ -163,6 +167,9 @@ public class Configuration {
     }
     if (getMcToWebQueueUrl() == null || getMcToWebQueueUrl().trim().isEmpty()) {
       errors.append("MC to Web Queue URL is required\n");
+    }
+    if (getWebToMcQueueUrl() == null || getWebToMcQueueUrl().trim().isEmpty()) {
+      errors.append("Web to MC Queue URL is required\n");
     }
 
     // Redis configuration

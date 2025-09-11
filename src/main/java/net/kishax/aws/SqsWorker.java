@@ -27,14 +27,17 @@ public class SqsWorker {
   private final ObjectMapper objectMapper;
   private final RedisClient redisClient;
   private final DatabaseClient databaseClient;
+  private final WebToMcMessageSender webToMcSender;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
-  public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient, DatabaseClient databaseClient) {
+  public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient, DatabaseClient databaseClient,
+      WebToMcMessageSender webToMcSender) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.redisClient = redisClient;
     this.databaseClient = databaseClient;
+    this.webToMcSender = webToMcSender;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
     this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -93,6 +96,7 @@ public class SqsWorker {
           .maxNumberOfMessages(10)
           .waitTimeSeconds(5) // Reduced wait time for testing
           .visibilityTimeout(30)
+          .messageAttributeNames("All") // Receive all message attributes for compatibility
           .build();
 
       ReceiveMessageResponse response = sqsClient.receiveMessage(request);
@@ -126,6 +130,14 @@ public class SqsWorker {
 
       JsonNode messageData = objectMapper.readTree(message.body());
       String messageType = messageData.path("type").asText();
+
+      // Log message attributes for compatibility verification
+      if (message.messageAttributes() != null && !message.messageAttributes().isEmpty()) {
+        String source = message.messageAttributes().containsKey("source")
+            ? message.messageAttributes().get("source").stringValue()
+            : "unknown";
+        logger.debug("📋 Message attributes - Type: {}, Source: {}", messageType, source);
+      }
 
       logger.info("🔍 Processing message type: {}", messageType);
 
@@ -237,6 +249,57 @@ public class SqsWorker {
       logger.error("❌ Error processing web auth response: {} ({})",
           data.path("playerName").asText(), data.path("playerUuid").asText(), error);
     }
+  }
+
+  /**
+   * Send auth confirm message to MC
+   */
+  public void sendAuthConfirmToMc(String playerName, String playerUuid) {
+    if (webToMcSender != null) {
+      webToMcSender.sendAuthConfirm(playerName, playerUuid);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm");
+    }
+  }
+
+  /**
+   * Send OTP to MC
+   */
+  public void sendOtpToMc(String playerName, String playerUuid, String otp) {
+    if (webToMcSender != null) {
+      webToMcSender.sendOtp(playerName, playerUuid, otp);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send OTP");
+    }
+  }
+
+  /**
+   * Send command to MC
+   */
+  public void sendCommandToMc(String commandType, String playerName, Object data) {
+    if (webToMcSender != null) {
+      webToMcSender.sendCommand(commandType, playerName, data);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send command");
+    }
+  }
+
+  /**
+   * Send player request to MC
+   */
+  public void sendPlayerRequestToMc(String requestType, String playerName, Object data) {
+    if (webToMcSender != null) {
+      webToMcSender.sendPlayerRequest(requestType, playerName, data);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send player request");
+    }
+  }
+
+  /**
+   * Get WebToMcMessageSender for external use
+   */
+  public WebToMcMessageSender getWebToMcSender() {
+    return webToMcSender;
   }
 
   /**

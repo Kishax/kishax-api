@@ -36,7 +36,8 @@ class SqsWorkerTest {
 
   @BeforeEach
   void setUp() {
-    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, databaseClient);
+    WebToMcMessageSender webToMcSender = mock(WebToMcMessageSender.class);
+    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, databaseClient, webToMcSender);
   }
 
   @Test

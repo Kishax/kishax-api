@@ -39,12 +39,16 @@ public class SqsWorkerApplication {
       this.redisClient = config.createRedisClient();
       this.databaseClient = config.createDatabaseClient();
 
+      // Create WebToMcMessageSender
+      WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getWebToMcQueueUrl());
+
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(
           sqsClient,
           config.getMcToWebQueueUrl(),
           redisClient,
-          databaseClient);
+          databaseClient,
+          webToMcSender);
 
       // Set up shutdown hook
       Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));

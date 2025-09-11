@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 
 import java.net.URI;
@@ -45,6 +46,7 @@ class LocalStackIntegrationTest {
   private SqsClient sqsClient;
   private RedisClient redisClient;
   private SqsWorker sqsWorker;
+  private WebToMcMessageSender webToMcSender;
   private ObjectMapper objectMapper;
 
   private String mcWebQueueUrl;
@@ -77,8 +79,11 @@ class LocalStackIntegrationTest {
     // Create DatabaseClient for tests
     DatabaseClient databaseClient = new DatabaseClient("http://localhost:3000");
 
+    // Create WebToMcMessageSender
+    webToMcSender = new WebToMcMessageSender(sqsClient, webMcQueueUrl);
+
     // Setup SqsWorker with direct dependencies
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, databaseClient, webToMcSender);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
@@ -262,6 +267,86 @@ class LocalStackIntegrationTest {
     } catch (Exception e) {
       System.out.println("Failed to retrieve data from Redis: " + e.getMessage());
       throw e;
+    }
+  }
+
+  @Test
+  void testBidirectionalCommunication() throws Exception {
+    System.out.println("Testing bidirectional communication between Web and MC");
+
+    // Test Web → MC auth confirm
+    String testPlayerName = "testPlayer_" + System.currentTimeMillis();
+    String testPlayerUuid = "test-uuid-" + System.currentTimeMillis();
+
+    System.out.println("Sending auth confirm to MC via Web→MC queue");
+    webToMcSender.sendAuthConfirm(testPlayerName, testPlayerUuid);
+
+    // Verify message is in Web→MC queue
+    Thread.sleep(1000);
+    List<Message> webToMcMessages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+        .queueUrl(webMcQueueUrl)
+        .maxNumberOfMessages(1)
+        .waitTimeSeconds(5)
+        .build()).messages();
+
+    assertFalse(webToMcMessages.isEmpty(), "Auth confirm message should be in Web→MC queue");
+
+    Message authMessage = webToMcMessages.get(0);
+    ObjectNode authPayload = (ObjectNode) objectMapper.readTree(authMessage.body());
+
+    assertEquals("web_mc_auth_confirm", authPayload.get("type").asText());
+    assertEquals(testPlayerName, authPayload.get("playerName").asText());
+    assertEquals(testPlayerUuid, authPayload.get("playerUuid").asText());
+
+    System.out.println("✅ Web→MC auth confirm message verified");
+
+    // Test Web → MC OTP
+    String testOtp = "123456";
+    webToMcSender.sendOtp(testPlayerName, testPlayerUuid, testOtp);
+
+    Thread.sleep(500);
+    List<Message> otpMessages = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+        .queueUrl(webMcQueueUrl)
+        .maxNumberOfMessages(10)
+        .waitTimeSeconds(5)
+        .build()).messages();
+
+    // Find OTP message in the list
+    Message otpMessage = null;
+    for (Message msg : otpMessages) {
+      ObjectNode payload = (ObjectNode) objectMapper.readTree(msg.body());
+      if ("web_mc_otp".equals(payload.get("type").asText())) {
+        otpMessage = msg;
+        break;
+      }
+    }
+
+    assertNotNull(otpMessage, "OTP message should be in Web→MC queue");
+    ObjectNode otpPayload = (ObjectNode) objectMapper.readTree(otpMessage.body());
+
+    assertEquals("web_mc_otp", otpPayload.get("type").asText());
+    assertEquals(testOtp, otpPayload.get("otp").asText());
+
+    System.out.println("✅ Web→MC OTP message verified");
+
+    // Clean up messages
+    sqsClient.deleteMessage(DeleteMessageRequest.builder()
+        .queueUrl(webMcQueueUrl)
+        .receiptHandle(authMessage.receiptHandle())
+        .build());
+    sqsClient.deleteMessage(DeleteMessageRequest.builder()
+        .queueUrl(webMcQueueUrl)
+        .receiptHandle(otpMessage.receiptHandle())
+        .build());
+
+    // Clean up any remaining messages
+    for (Message msg : otpMessages) {
+      if (!msg.equals(authMessage) && !msg.equals(otpMessage)) {
+        sqsClient.deleteMessage(DeleteMessageRequest.builder()
+            .queueUrl(webMcQueueUrl)
+            .receiptHandle(msg.receiptHandle())
+            .build());
+      }
     }
   }
 }
