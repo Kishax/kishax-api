@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0           http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.kishax</groupId>
+  <groupId>net.kishax.aws</groupId>
   <artifactId>kishax-aws</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
   <name>Kishax AWS Integration</name>
   <description>AWS SQS and Redis integration library for Kishax Minecraft infrastructure</description>
+  <url>https://github.com/Kishax/kishax-aws</url>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <name>Takaya Maekawa</name>
+      <email>takaya@maekawa.dev</email>
+      <organization>Kishax</organization>
+      <organizationUrl>https://kishax.net</organizationUrl>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/Kishax/kishax-aws.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/Kishax/kishax-aws.git</developerConnection>
+    <url>https://github.com/Kishax/kishax-aws</url>
+  </scm>
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
@@ -162,11 +182,16 @@
           </execution>
         </executions>
       </plugin>
-      <!-- Maven Deploy Plugin for publishing -->
+      <!-- Central Publishing Maven Plugin for publishing to Maven Central -->
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-deploy-plugin</artifactId>
-        <version>3.1.1</version>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.8.0</version>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>true</autoPublish>
+        </configuration>
       </plugin>
       <!-- Maven Source Plugin for source JAR -->
       <plugin>
@@ -200,15 +225,23 @@
           <quiet>true</quiet>
         </configuration>
       </plugin>
+      <!-- GPG Sign Plugin -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>3.2.4</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
-  <distributionManagement>
-    <repository>
-      <id>local</id>
-      <name>Local Repository</name>
-      <url>file://${user.home}/.m2/repository</url>
-    </repository>
-  </distributionManagement>
   <repositories>
     <repository>
       <id>central</id>

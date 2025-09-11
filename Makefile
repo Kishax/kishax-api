@@ -29,8 +29,8 @@ test-prod:
 	@echo "⚠️  Make sure .env.prod has your real AWS credentials!"
 	RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
 
-# Publish to Maven local repository
+# Publish to Sonatype repository
 publish:
-	@echo "📦 Publishing kishax-aws to Maven local repository..."
-	mvn clean install -DskipTests
-	@echo "✅ kishax-aws published successfully to ~/.m2/repository/"
+	@echo "📦 Publishing kishax-aws to Sonatype repository..."
+	mvn clean deploy
+	@echo "✅ kishax-aws deployed successfully!"
