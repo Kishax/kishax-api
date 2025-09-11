@@ -89,19 +89,19 @@ public class Configuration {
   }
 
   public String getAwsAccessKeyId() {
-    return getProperty("aws.sqs.accessKeyId");
+    return getProperty("mc.web.sqs.access.key.id");
   }
 
   public String getAwsSecretAccessKey() {
-    return getProperty("aws.sqs.secretAccessKey");
+    return getProperty("mc.web.sqs.secret.access.key");
   }
 
   public String getMcToWebQueueUrl() {
-    return getProperty("aws.sqs.mcToWebQueueUrl");
+    return getProperty("mc.to.web.queue.url");
   }
 
   public String getWebToMcQueueUrl() {
-    return getProperty("aws.sqs.webToMcQueueUrl");
+    return getProperty("web.to.mc.queue.url");
   }
 
   // Redis Configuration
