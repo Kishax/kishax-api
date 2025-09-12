@@ -44,11 +44,7 @@ public class SqsWorkerApplication {
       McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(), "standalone-app");
 
       // Create WebApiClient
-      String webApiUrl = config.getWebApiUrl();
-      String webApiKey = config.getWebApiKey();
-      logger.info("🔧 Creating WebApiClient with URL: {}", webApiUrl);
-      logger.info("🔑 WebApiKey configured: {}", webApiKey != null && !webApiKey.isEmpty() ? "YES" : "NO");
-      WebApiClient webApiClient = new WebApiClient(webApiUrl, webApiKey);
+      WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
 
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(

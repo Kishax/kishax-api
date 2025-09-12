@@ -227,14 +227,13 @@ public class SqsWorker {
       // Send auth token to WEB API (primary integration method)
       try {
         if (webApiClient != null) {
-          logger.info("🌐 Attempting to send auth token to WEB API for player: {}", mcid);
           webApiClient.sendAuthToken(mcid, uuid, authToken, expiresAt, action);
           logger.info("✅ Auth token sent to WEB API for player: {}", mcid);
         } else {
           logger.warn("⚠️ WebApiClient is null, cannot send to WEB API");
         }
       } catch (Exception webApiError) {
-        logger.error("❌ Failed to send auth token to WEB API (continuing with Redis): {}", webApiError.getMessage(), webApiError);
+        logger.error("❌ Failed to send auth token to WEB API (continuing with Redis): {}", webApiError.getMessage());
         // Don't re-throw - Redis integration can still work
       }
 
