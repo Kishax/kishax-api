@@ -22,7 +22,6 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 
-import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;

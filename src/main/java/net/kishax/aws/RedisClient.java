@@ -25,10 +25,8 @@ public class RedisClient {
   private StatefulRedisConnection<String, String> connection;
   private RedisCommands<String, String> syncCommands;
   private final ObjectMapper objectMapper;
-  private final String redisUrl;
 
   public RedisClient(String redisUrl) {
-    this.redisUrl = redisUrl;
     this.lettuceClient = io.lettuce.core.RedisClient.create(redisUrl);
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
