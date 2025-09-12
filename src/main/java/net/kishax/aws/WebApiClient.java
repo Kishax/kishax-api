@@ -29,6 +29,7 @@ public class WebApiClient {
     this.webApiUrl = webApiUrl;
     this.webApiKey = webApiKey;
     this.httpClient = HttpClient.newBuilder()
+        .version(HttpClient.Version.HTTP_1_1)  // Force HTTP/1.1
         .connectTimeout(Duration.ofSeconds(10))
         .build();
     this.objectMapper = new ObjectMapper();
@@ -51,7 +52,9 @@ public class WebApiClient {
       
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
           .uri(URI.create(webApiUrl + "/api/mc/auth-token"))
+          .version(HttpClient.Version.HTTP_1_1)  // Ensure HTTP/1.1
           .header("Content-Type", "application/json")
+          .header("User-Agent", "Kishax-AWS-Client/1.0.2")
           .POST(HttpRequest.BodyPublishers.ofString(requestBody))
           .timeout(Duration.ofSeconds(30));
 
