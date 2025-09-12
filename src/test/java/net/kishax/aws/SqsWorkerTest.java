@@ -1,6 +1,5 @@
 package net.kishax.aws;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,8 +9,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
-import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,7 +31,8 @@ class SqsWorkerTest {
   @BeforeEach
   void setUp() {
     WebToMcMessageSender webToMcSender = mock(WebToMcMessageSender.class);
-    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, webToMcSender);
+    McToWebMessageSender mcToWebSender = mock(McToWebMessageSender.class);
+    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, redisClient, webToMcSender, mcToWebSender);
   }
 
   @Test
