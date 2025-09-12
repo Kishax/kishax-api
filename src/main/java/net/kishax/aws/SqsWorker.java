@@ -45,6 +45,27 @@ public class SqsWorker {
   }
 
   /**
+   * Create SqsWorker with QUEUE_MODE awareness
+   */
+  public static SqsWorker createWithQueueMode(Configuration config) {
+    String queueMode = config.getQueueMode();
+    String pollingQueueUrl = config.getPollingQueueUrl();
+    String sendingQueueUrl = config.getSendingQueueUrl();
+
+    logger.info("🔧 Creating SQS Worker with QUEUE_MODE: {}", queueMode);
+    logger.info("📥 Polling from queue: {}", pollingQueueUrl);
+    logger.info("📤 Sending to queue: {}", sendingQueueUrl);
+
+    SqsClient sqsClient = config.createSqsClient();
+    RedisClient redisClient = config.createRedisClient();
+
+    // WebToMcMessageSender should use the sending queue URL
+    WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, sendingQueueUrl);
+
+    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender);
+  }
+
+  /**
    * Start SQS message polling
    */
   public void start() {

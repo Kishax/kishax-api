@@ -117,6 +117,11 @@ public class Configuration {
     return getIntProperty("redis.commandTimeout", 3000);
   }
 
+  // Queue Mode Configuration
+  public String getQueueMode() {
+    return getProperty("queue.mode", "MC").toUpperCase();
+  }
+
   // SQS Worker Configuration
   public boolean isSqsWorkerEnabled() {
     return getBooleanProperty("sqs.worker.enabled", true);
@@ -193,6 +198,42 @@ public class Configuration {
    */
   public RedisClient createRedisClient() {
     return new RedisClient(getRedisUrl());
+  }
+
+  /**
+   * Get the appropriate queue URL based on QUEUE_MODE
+   * MC mode: polls from webToMcQueue
+   * WEB mode: polls from mcToWebQueue
+   */
+  public String getPollingQueueUrl() {
+    String queueMode = getQueueMode();
+    switch (queueMode) {
+      case "MC":
+        return getWebToMcQueueUrl();
+      case "WEB":
+        return getMcToWebQueueUrl();
+      default:
+        logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
+        return getWebToMcQueueUrl();
+    }
+  }
+
+  /**
+   * Get the appropriate sending queue URL based on QUEUE_MODE
+   * MC mode: sends to mcToWebQueue
+   * WEB mode: sends to webToMcQueue
+   */
+  public String getSendingQueueUrl() {
+    String queueMode = getQueueMode();
+    switch (queueMode) {
+      case "MC":
+        return getMcToWebQueueUrl();
+      case "WEB":
+        return getWebToMcQueueUrl();
+      default:
+        logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
+        return getMcToWebQueueUrl();
+    }
   }
 
   /**
