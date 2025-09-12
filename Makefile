@@ -40,3 +40,14 @@ publish:
 run:
 	@echo "INFO: Starting Kishax AWS SQS Worker..."
 	@java -jar target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar
+
+.PHONY: build-no-tests-exec-and-compile
+build-no-tests-exec-and-compile:
+	@echo "INFO: Building kishax-aws without tests...(skip: execution and compilation)"
+	@mvn clean install -Dmaven.test.skip=true
+	@echo "✅ Build successful! JAR located at target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar"
+
+build-no-tests-exec:
+	@echo "INFO: Building kishax-aws without tests...(skip: execution)"
+	@mvn clean package -DskipTests
+	@echo "✅ Build successful! JAR located at target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar"
