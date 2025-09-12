@@ -27,16 +27,18 @@ public class SqsWorker {
   private final RedisClient redisClient;
   private final WebToMcMessageSender webToMcSender;
   private final McToWebMessageSender mcToWebSender;
+  private final WebApiClient webApiClient;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient,
-      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender) {
+      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.redisClient = redisClient;
     this.webToMcSender = webToMcSender;
     this.mcToWebSender = mcToWebSender;
+    this.webApiClient = webApiClient;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
     this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -68,7 +70,10 @@ public class SqsWorker {
     String sourceId = "MC".equals(queueMode) ? "mc-server" : "web-app";
     McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, sendingQueueUrl, sourceId);
 
-    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender, mcToWebSender);
+    // Create WebApiClient
+    WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
+
+    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender, mcToWebSender, webApiClient);
   }
 
   /**
@@ -194,7 +199,7 @@ public class SqsWorker {
   }
 
   /**
-   * Handle auth token message - forward to Redis pub/sub for Web to handle
+   * Handle auth token message - forward to Redis pub/sub and WEB API
    */
   private void handleAuthTokenMessage(JsonNode data) {
     try {
@@ -202,10 +207,11 @@ public class SqsWorker {
       String uuid = data.path("uuid").asText();
       String authToken = data.path("authToken").asText();
       long expiresAt = data.path("expiresAt").asLong();
+      String action = data.path("action").asText("confirm");
 
       logger.info("🎮 Processing auth token for player: {} ({})", mcid, uuid);
 
-      // Forward auth token to Web via Redis pub/sub
+      // Forward auth token to Web via Redis pub/sub (for real-time notifications)
       AuthTokenData authTokenData = new AuthTokenData(mcid, uuid, authToken, expiresAt);
 
       // Save to Redis with TTL (for Web to pick up)
@@ -217,6 +223,19 @@ public class SqsWorker {
       String channelName = String.format("auth_token:%s_%s", mcid, uuid);
       redisClient.publish(channelName, authTokenData);
       logger.info("📡 Published auth token notification: {}", channelName);
+
+      // Send auth token to WEB API (primary integration method)
+      try {
+        if (webApiClient != null) {
+          webApiClient.sendAuthToken(mcid, uuid, authToken, expiresAt, action);
+          logger.info("✅ Auth token sent to WEB API for player: {}", mcid);
+        } else {
+          logger.warn("⚠️ WebApiClient is null, cannot send to WEB API");
+        }
+      } catch (Exception webApiError) {
+        logger.error("❌ Failed to send auth token to WEB API (continuing with Redis): {}", webApiError.getMessage());
+        // Don't re-throw - Redis integration can still work
+      }
 
       logger.info("✅ Successfully processed auth token for player: {}", mcid);
     } catch (Exception error) {

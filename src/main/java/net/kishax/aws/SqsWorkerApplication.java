@@ -43,13 +43,17 @@ public class SqsWorkerApplication {
       // Create McToWebMessageSender 
       McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(), "standalone-app");
 
+      // Create WebApiClient
+      WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
+
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(
           sqsClient,
           config.getMcToWebQueueUrl(),
           redisClient,
           webToMcSender,
-          mcToWebSender);
+          mcToWebSender,
+          webApiClient);
 
       // Set up shutdown hook
       Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));

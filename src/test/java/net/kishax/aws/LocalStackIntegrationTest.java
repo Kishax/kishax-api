@@ -80,8 +80,11 @@ class LocalStackIntegrationTest {
     // Create McToWebMessageSender
     McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, mcWebQueueUrl, "test-mc");
 
+    // Create WebApiClient for tests
+    WebApiClient webApiClient = new WebApiClient("http://localhost:3000", null);
+
     // Setup SqsWorker with direct dependencies
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, webToMcSender, mcToWebSender);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, webToMcSender, mcToWebSender, webApiClient);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
