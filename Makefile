@@ -39,4 +39,4 @@ publish:
 .PHONY: run
 run:
 	@echo "INFO: Starting Kishax AWS SQS Worker..."
-	@java -jar target/kishax-aws-1.0.0-with-dependencies.jar
+	@java -jar target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar
