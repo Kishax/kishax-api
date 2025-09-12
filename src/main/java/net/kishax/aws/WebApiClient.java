@@ -63,8 +63,17 @@ public class WebApiClient {
       HttpRequest request = requestBuilder.build();
 
       logger.info("📤 Sending auth token to WEB API: {} for player {}", webApiUrl + "/api/mc/auth-token", mcid);
+      logger.debug("🔍 Request headers: {}", request.headers().map());
+      logger.debug("🔍 Request body: {}", requestBody);
+      logger.debug("🔍 Request URI: {}", request.uri());
 
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      
+      logger.info("📥 Received response: {} - Content-Length: {}", 
+          response.statusCode(), 
+          response.headers().firstValue("Content-Length").orElse("unknown"));
+      logger.debug("📥 Response headers: {}", response.headers().map());
+      logger.debug("📥 Response body: {}", response.body());
 
       if (response.statusCode() >= 200 && response.statusCode() < 300) {
         logger.info("✅ Auth token sent to WEB API successfully: {} - {}", response.statusCode(), mcid);
@@ -72,11 +81,19 @@ public class WebApiClient {
         logger.error("❌ WEB API returned error status: {} - Body: {}", response.statusCode(), response.body());
       }
 
-    } catch (IOException | InterruptedException e) {
-      logger.error("❌ Failed to send auth token to WEB API: {}", e.getMessage(), e);
+    } catch (IOException e) {
+      logger.error("❌ IO Error sending auth token to WEB API: {}", e.getMessage());
+      logger.error("❌ Exception class: {}", e.getClass().getSimpleName());
+      if (e.getCause() != null) {
+        logger.error("❌ Root cause: {} - {}", e.getCause().getClass().getSimpleName(), e.getCause().getMessage());
+      }
+      logger.debug("❌ Full stack trace:", e);
+    } catch (InterruptedException e) {
+      logger.error("❌ Request interrupted: {}", e.getMessage());
       Thread.currentThread().interrupt();
     } catch (Exception e) {
-      logger.error("❌ Unexpected error sending auth token to WEB API: {}", e.getMessage(), e);
+      logger.error("❌ Unexpected error sending auth token to WEB API: {} ({})", e.getMessage(), e.getClass().getSimpleName());
+      logger.debug("❌ Full stack trace:", e);
     }
   }
 
