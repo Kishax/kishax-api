@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.kishax.aws</groupId>
   <artifactId>kishax-aws</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <packaging>jar</packaging>
   <name>Kishax AWS Integration</name>
   <description>AWS SQS and Redis integration library for Kishax Minecraft infrastructure</description>
