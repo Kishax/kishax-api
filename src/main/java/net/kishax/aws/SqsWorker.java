@@ -26,15 +26,17 @@ public class SqsWorker {
   private final ObjectMapper objectMapper;
   private final RedisClient redisClient;
   private final WebToMcMessageSender webToMcSender;
+  private final McToWebMessageSender mcToWebSender;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient,
-      WebToMcMessageSender webToMcSender) {
+      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.redisClient = redisClient;
     this.webToMcSender = webToMcSender;
+    this.mcToWebSender = mcToWebSender;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
     this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -59,10 +61,14 @@ public class SqsWorker {
     SqsClient sqsClient = config.createSqsClient();
     RedisClient redisClient = config.createRedisClient();
 
-    // WebToMcMessageSender should use the sending queue URL
+    // WebToMcMessageSender should use the sending queue URL (legacy compatibility)
     WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, sendingQueueUrl);
+    
+    // McToWebMessageSender should use the sending queue URL
+    String sourceId = "MC".equals(queueMode) ? "mc-server" : "web-app";
+    McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, sendingQueueUrl, sourceId);
 
-    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender);
+    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender, mcToWebSender);
   }
 
   /**
@@ -324,10 +330,17 @@ public class SqsWorker {
   }
 
   /**
-   * Get WebToMcMessageSender for external use
+   * Get WebToMcMessageSender for external use (legacy compatibility)
    */
   public WebToMcMessageSender getWebToMcSender() {
     return webToMcSender;
+  }
+
+  /**
+   * Get McToWebMessageSender for external use (recommended)
+   */
+  public McToWebMessageSender getMcToWebSender() {
+    return mcToWebSender;
   }
 
   /**
