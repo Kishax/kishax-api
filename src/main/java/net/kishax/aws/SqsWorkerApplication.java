@@ -50,6 +50,7 @@ public class SqsWorkerApplication {
       this.sqsWorker = new SqsWorker(
           sqsClient,
           config.getMcToWebQueueUrl(),
+          config.getQueueMode(),
           redisClient,
           webToMcSender,
           mcToWebSender,

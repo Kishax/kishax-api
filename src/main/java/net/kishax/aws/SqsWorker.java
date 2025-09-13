@@ -23,6 +23,7 @@ public class SqsWorker {
 
   private final SqsClient sqsClient;
   private final String queueUrl;
+  private final String queueMode;
   private final ObjectMapper objectMapper;
   private final RedisClient redisClient;
   private final WebToMcMessageSender webToMcSender;
@@ -30,11 +31,30 @@ public class SqsWorker {
   private final WebApiClient webApiClient;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
+  private RedisClient.RedisSubscription webToMcSubscription;
+  
+  // Callback for OTP display integration
+  private static OtpDisplayCallback otpDisplayCallback;
 
-  public SqsWorker(SqsClient sqsClient, String queueUrl, RedisClient redisClient,
+  /**
+   * Interface for OTP display callback
+   */
+  public interface OtpDisplayCallback {
+    void displayOtp(String playerName, String playerUuid, String otp);
+  }
+
+  /**
+   * Set the OTP display callback
+   */
+  public static void setOtpDisplayCallback(OtpDisplayCallback callback) {
+    otpDisplayCallback = callback;
+  }
+
+  public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
       WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
+    this.queueMode = queueMode;
     this.redisClient = redisClient;
     this.webToMcSender = webToMcSender;
     this.mcToWebSender = mcToWebSender;
@@ -73,7 +93,7 @@ public class SqsWorker {
     // Create WebApiClient
     WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
 
-    return new SqsWorker(sqsClient, pollingQueueUrl, redisClient, webToMcSender, mcToWebSender, webApiClient);
+    return new SqsWorker(sqsClient, pollingQueueUrl, queueMode, redisClient, webToMcSender, mcToWebSender, webApiClient);
   }
 
   /**
@@ -83,10 +103,24 @@ public class SqsWorker {
     if (running.compareAndSet(false, true)) {
       logger.info("🚀 Starting SQS Worker for auth tokens...");
       logger.info("📡 Polling queue: {}", queueUrl);
+      logger.info("🔧 Queue mode: {}", queueMode);
       System.out.println("SQS Worker started - Queue URL: " + queueUrl);
 
       // Start polling with 5 second interval
       executor.scheduleWithFixedDelay(this::pollMessages, 0, 5, TimeUnit.SECONDS);
+
+      // Subscribe to Redis Pub/Sub for web_to_mc messages if QUEUE_MODE is WEB
+      if ("WEB".equalsIgnoreCase(queueMode)) {
+        try {
+          logger.info("🔔 Subscribing to Redis channel web_to_mc (QUEUE_MODE=WEB)");
+          webToMcSubscription = redisClient.subscribe("web_to_mc", this::handleWebToMcMessage);
+          logger.info("✅ Successfully subscribed to web_to_mc Redis channel");
+        } catch (Exception e) {
+          logger.error("❌ Failed to subscribe to web_to_mc Redis channel: {}", e.getMessage(), e);
+        }
+      } else {
+        logger.info("ℹ️ Skipping Redis subscription (QUEUE_MODE={}, only WEB mode subscribes)", queueMode);
+      }
     } else {
       logger.warn("SQS Worker is already running");
     }
@@ -98,6 +132,17 @@ public class SqsWorker {
   public void stop() {
     if (running.compareAndSet(true, false)) {
       logger.info("🛑 Stopping SQS Worker...");
+      
+      // Stop Redis subscription if active
+      if (webToMcSubscription != null) {
+        try {
+          webToMcSubscription.unsubscribe();
+          logger.info("🔇 Unsubscribed from web_to_mc Redis channel");
+        } catch (Exception e) {
+          logger.error("❌ Error unsubscribing from Redis: {}", e.getMessage(), e);
+        }
+      }
+
       executor.shutdown();
       try {
         if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
@@ -175,6 +220,11 @@ public class SqsWorker {
           handleAuthTokenMessage(messageData);
           deleteMessage(message);
           logger.info("✅ Auth token message processed and deleted successfully");
+        }
+        case "web_mc_otp" -> {
+          handleWebMcOtpMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Web MC OTP message processed and deleted successfully");
         }
         case "mc_otp_response" -> {
           handleOtpResponseMessage(messageData);
@@ -282,6 +332,45 @@ public class SqsWorker {
   }
 
   /**
+   * Handle web_mc_otp message (WEB -> MC OTP display)
+   */
+  private void handleWebMcOtpMessage(JsonNode data) {
+    try {
+      String playerName = data.path("playerName").asText();
+      String playerUuid = data.path("playerUuid").asText();
+      String otp = data.path("otp").asText();
+
+      logger.info("🔐 Processing OTP display request for player: {} ({})", playerName, playerUuid);
+      logger.info("📝 OTP to display: {}", otp);
+
+      // Use callback to integrate with Velocity/Spigot OTP display
+      if (otpDisplayCallback != null) {
+        try {
+          otpDisplayCallback.displayOtp(playerName, playerUuid, otp);
+          logger.info("✅ OTP display callback executed for player: {}", playerName);
+        } catch (Exception callbackError) {
+          logger.error("❌ OTP display callback failed for player: {} ({})", playerName, playerUuid, callbackError);
+          // Don't re-throw, continue with fallback logging
+        }
+      } else {
+        logger.warn("⚠️ No OTP display callback registered, logging OTP instead");
+      }
+
+      // Fallback: log the OTP for debugging
+      System.out.println("=== OTP DISPLAY REQUEST ===");
+      System.out.println("Player: " + playerName + " (" + playerUuid + ")");
+      System.out.println("OTP: " + otp);
+      System.out.println("===========================");
+
+      logger.info("✅ OTP display request processed for player: {}", playerName);
+    } catch (Exception error) {
+      logger.error("❌ Error processing OTP display request for player: {} ({})",
+          data.path("playerName").asText(), data.path("playerUuid").asText(), error);
+      throw new RuntimeException(error); // Re-throw to prevent message deletion
+    }
+  }
+
+  /**
    * Handle web auth response message
    */
   private void handleWebAuthResponseMessage(JsonNode data) {
@@ -360,6 +449,92 @@ public class SqsWorker {
    */
   public McToWebMessageSender getMcToWebSender() {
     return mcToWebSender;
+  }
+
+  /**
+   * Handle message from web_to_mc Redis channel (QUEUE_MODE=WEB only)
+   */
+  private void handleWebToMcMessage(String messageJson) {
+    try {
+      logger.info("📨 Received message from web_to_mc Redis channel");
+      JsonNode messageData = objectMapper.readTree(messageJson);
+      
+      String messageType = messageData.path("type").asText();
+      JsonNode data = messageData.path("data");
+      
+      logger.info("🔍 Processing Redis message type: {}", messageType);
+      
+      switch (messageType) {
+        case "web_mc_otp" -> {
+          handleOtpMessage(data);
+          logger.info("✅ OTP message from Redis processed successfully");
+        }
+        case "web_mc_auth_confirm" -> {
+          handleAuthConfirmMessage(data);
+          logger.info("✅ Auth confirm message from Redis processed successfully");
+        }
+        case "web_mc_command" -> {
+          handleCommandMessage(data);
+          logger.info("✅ Command message from Redis processed successfully");
+        }
+        case "web_mc_player_request" -> {
+          handlePlayerRequestMessage(data);
+          logger.info("✅ Player request message from Redis processed successfully");
+        }
+        default -> {
+          logger.warn("! Unknown Redis message type: {}", messageType);
+        }
+      }
+    } catch (Exception error) {
+      logger.error("❌ Error processing Redis message: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Handle OTP message from Redis
+   */
+  private void handleOtpMessage(JsonNode data) {
+    String playerName = data.path("playerName").asText();
+    String playerUuid = data.path("playerUuid").asText();
+    String otp = data.path("otp").asText();
+    
+    logger.info("🔐 Processing OTP from Redis for player: {} ({})", playerName, playerUuid);
+    sendOtpToMc(playerName, playerUuid, otp);
+  }
+
+  /**
+   * Handle auth confirm message from Redis
+   */
+  private void handleAuthConfirmMessage(JsonNode data) {
+    String playerName = data.path("playerName").asText();
+    String playerUuid = data.path("playerUuid").asText();
+    
+    logger.info("🔒 Processing auth confirm from Redis for player: {} ({})", playerName, playerUuid);
+    sendAuthConfirmToMc(playerName, playerUuid);
+  }
+
+  /**
+   * Handle command message from Redis
+   */
+  private void handleCommandMessage(JsonNode data) {
+    String commandType = data.path("commandType").asText();
+    String playerName = data.path("playerName").asText();
+    JsonNode commandData = data.path("data");
+    
+    logger.info("⚡ Processing command from Redis: {} for player: {}", commandType, playerName);
+    sendCommandToMc(commandType, playerName, commandData);
+  }
+
+  /**
+   * Handle player request message from Redis
+   */
+  private void handlePlayerRequestMessage(JsonNode data) {
+    String requestType = data.path("requestType").asText();
+    String playerName = data.path("playerName").asText();
+    JsonNode requestData = data.path("data");
+    
+    logger.info("📋 Processing player request from Redis: {} for player: {}", requestType, playerName);
+    sendPlayerRequestToMc(requestType, playerName, requestData);
   }
 
   /**
