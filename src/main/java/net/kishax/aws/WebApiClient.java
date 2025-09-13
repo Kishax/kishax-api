@@ -29,7 +29,7 @@ public class WebApiClient {
     this.webApiUrl = webApiUrl;
     this.webApiKey = webApiKey;
     this.httpClient = HttpClient.newBuilder()
-        .version(HttpClient.Version.HTTP_1_1)  // Force HTTP/1.1
+        .version(HttpClient.Version.HTTP_1_1) // Force HTTP/1.1
         .connectTimeout(Duration.ofSeconds(10))
         .build();
     this.objectMapper = new ObjectMapper();
@@ -49,10 +49,10 @@ public class WebApiClient {
       payload.put("action", action);
 
       String requestBody = objectMapper.writeValueAsString(payload);
-      
+
       HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
           .uri(URI.create(webApiUrl + "/api/mc/auth-token"))
-          .version(HttpClient.Version.HTTP_1_1)  // Ensure HTTP/1.1
+          .version(HttpClient.Version.HTTP_1_1) // Ensure HTTP/1.1
           .header("Content-Type", "application/json")
           .header("User-Agent", "Kishax-AWS-Client/1.0.2")
           .POST(HttpRequest.BodyPublishers.ofString(requestBody))
@@ -95,10 +95,10 @@ public class WebApiClient {
           .build();
 
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-      
+
       boolean isHealthy = response.statusCode() >= 200 && response.statusCode() < 300;
       logger.info("🔍 WEB API health check: {} - Status: {}", webApiUrl, response.statusCode());
-      
+
       return isHealthy;
     } catch (Exception e) {
       logger.warn("⚠️ WEB API health check failed: {}", e.getMessage());

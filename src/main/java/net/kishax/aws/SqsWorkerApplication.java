@@ -39,9 +39,10 @@ public class SqsWorkerApplication {
 
       // Create WebToMcMessageSender
       WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getWebToMcQueueUrl());
-      
-      // Create McToWebMessageSender 
-      McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(), "standalone-app");
+
+      // Create McToWebMessageSender
+      McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(),
+          "standalone-app");
 
       // Create WebApiClient
       WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());

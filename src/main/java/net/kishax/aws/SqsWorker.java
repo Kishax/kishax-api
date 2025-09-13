@@ -32,7 +32,7 @@ public class SqsWorker {
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private RedisClient.RedisSubscription webToMcSubscription;
-  
+
   // Callback for OTP display integration
   private static OtpDisplayCallback otpDisplayCallback;
 
@@ -85,7 +85,7 @@ public class SqsWorker {
 
     // WebToMcMessageSender should use the sending queue URL (legacy compatibility)
     WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, sendingQueueUrl);
-    
+
     // McToWebMessageSender should use the sending queue URL
     String sourceId = "MC".equals(queueMode) ? "mc-server" : "web-app";
     McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, sendingQueueUrl, sourceId);
@@ -93,7 +93,8 @@ public class SqsWorker {
     // Create WebApiClient
     WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
 
-    return new SqsWorker(sqsClient, pollingQueueUrl, queueMode, redisClient, webToMcSender, mcToWebSender, webApiClient);
+    return new SqsWorker(sqsClient, pollingQueueUrl, queueMode, redisClient, webToMcSender, mcToWebSender,
+        webApiClient);
   }
 
   /**
@@ -132,7 +133,7 @@ public class SqsWorker {
   public void stop() {
     if (running.compareAndSet(true, false)) {
       logger.info("🛑 Stopping SQS Worker...");
-      
+
       // Stop Redis subscription if active
       if (webToMcSubscription != null) {
         try {
@@ -458,12 +459,12 @@ public class SqsWorker {
     try {
       logger.info("📨 Received message from web_to_mc Redis channel");
       JsonNode messageData = objectMapper.readTree(messageJson);
-      
+
       String messageType = messageData.path("type").asText();
       JsonNode data = messageData.path("data");
-      
+
       logger.info("🔍 Processing Redis message type: {}", messageType);
-      
+
       switch (messageType) {
         case "web_mc_otp" -> {
           handleOtpMessage(data);
@@ -497,7 +498,7 @@ public class SqsWorker {
     String playerName = data.path("playerName").asText();
     String playerUuid = data.path("playerUuid").asText();
     String otp = data.path("otp").asText();
-    
+
     logger.info("🔐 Processing OTP from Redis for player: {} ({})", playerName, playerUuid);
     sendOtpToMc(playerName, playerUuid, otp);
   }
@@ -508,7 +509,7 @@ public class SqsWorker {
   private void handleAuthConfirmMessage(JsonNode data) {
     String playerName = data.path("playerName").asText();
     String playerUuid = data.path("playerUuid").asText();
-    
+
     logger.info("🔒 Processing auth confirm from Redis for player: {} ({})", playerName, playerUuid);
     sendAuthConfirmToMc(playerName, playerUuid);
   }
@@ -520,7 +521,7 @@ public class SqsWorker {
     String commandType = data.path("commandType").asText();
     String playerName = data.path("playerName").asText();
     JsonNode commandData = data.path("data");
-    
+
     logger.info("⚡ Processing command from Redis: {} for player: {}", commandType, playerName);
     sendCommandToMc(commandType, playerName, commandData);
   }
@@ -532,7 +533,7 @@ public class SqsWorker {
     String requestType = data.path("requestType").asText();
     String playerName = data.path("playerName").asText();
     JsonNode requestData = data.path("data");
-    
+
     logger.info("📋 Processing player request from Redis: {} for player: {}", requestType, playerName);
     sendPlayerRequestToMc(requestType, playerName, requestData);
   }
