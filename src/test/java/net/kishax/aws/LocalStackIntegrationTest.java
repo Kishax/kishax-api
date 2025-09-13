@@ -84,7 +84,7 @@ class LocalStackIntegrationTest {
     WebApiClient webApiClient = new WebApiClient("http://localhost:3000", null);
 
     // Setup SqsWorker with direct dependencies
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, redisClient, webToMcSender, mcToWebSender, webApiClient);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
