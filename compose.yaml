@@ -4,7 +4,7 @@ services:
     image: redis:7-alpine
     container_name: kishax-aws-redis
     ports:
-      - "6379:6379"
+      - "6380:6380"
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
@@ -56,7 +56,7 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       # Redis configuration
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6380 # default: 6379 (prevented conflict with host)
       # Application configuration
       - MC_WEB_SQS_QUEUE_URL=http://localstack:4566/000000000000/mc-web-queue
       - WEB_MC_SQS_QUEUE_URL=http://localstack:4566/000000000000/web-mc-queue
@@ -69,4 +69,3 @@ services:
 
 volumes:
   redis-data:
-
