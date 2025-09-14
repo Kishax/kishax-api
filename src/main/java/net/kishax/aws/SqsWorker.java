@@ -237,6 +237,11 @@ public class SqsWorker {
           deleteMessage(message);
           logger.info("✅ Web Auth Response message processed and deleted successfully");
         }
+        case "web_mc_auth_confirm" -> {
+          handleWebMcAuthConfirmMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Web MC Auth Confirm message processed and deleted successfully");
+        }
         default -> {
           logger.warn("! Unknown message type: {}", messageType);
           // Still delete unknown messages to prevent them from being reprocessed
@@ -395,6 +400,33 @@ public class SqsWorker {
   }
 
   /**
+   * Handle web to MC auth confirm message
+   */
+  private void handleWebMcAuthConfirmMessage(JsonNode data) {
+    try {
+      String playerName = data.path("playerName").asText();
+      String playerUuid = data.path("playerUuid").asText();
+      long timestamp = data.path("timestamp").asLong(System.currentTimeMillis());
+
+      logger.info("🔐 Processing web to MC auth confirm for player: {} ({})", playerName, playerUuid);
+
+      // Send auth confirm to MC via WebToMcMessageSender
+      if (webToMcSender != null) {
+        webToMcSender.sendAuthConfirm(playerName, playerUuid);
+        logger.info("📤 Auth confirm sent to MC for player: {}", playerName);
+      } else {
+        logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm to MC");
+      }
+
+      logger.info("✅ Web MC auth confirm message processed successfully");
+    } catch (Exception error) {
+      logger.error("❌ Error processing web MC auth confirm message: {} ({})",
+          data.path("playerName").asText(), data.path("playerUuid").asText(), error);
+      throw new RuntimeException(error); // Re-throw to prevent message deletion on error
+    }
+  }
+
+  /**
    * Send auth confirm message to MC
    */
   public void sendAuthConfirmToMc(String playerName, String playerUuid) {
@@ -435,6 +467,17 @@ public class SqsWorker {
       webToMcSender.sendPlayerRequest(requestType, playerName, data);
     } else {
       logger.warn("⚠️ WebToMcMessageSender not available - cannot send player request");
+    }
+  }
+
+  /**
+   * Send auth completion message to MC
+   */
+  public void sendAuthCompletionToMc(String playerName, String playerUuid, String message) {
+    if (webToMcSender != null) {
+      webToMcSender.sendAuthCompletion(playerName, playerUuid, message);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth completion");
     }
   }
 
@@ -481,6 +524,10 @@ public class SqsWorker {
         case "web_mc_player_request" -> {
           handlePlayerRequestMessage(data);
           logger.info("✅ Player request message from Redis processed successfully");
+        }
+        case "web_mc_auth_completion" -> {
+          handleAuthCompletionMessage(data);
+          logger.info("✅ Auth completion message from Redis processed successfully");
         }
         default -> {
           logger.warn("! Unknown Redis message type: {}", messageType);
@@ -536,6 +583,18 @@ public class SqsWorker {
 
     logger.info("📋 Processing player request from Redis: {} for player: {}", requestType, playerName);
     sendPlayerRequestToMc(requestType, playerName, requestData);
+  }
+
+  /**
+   * Handle auth completion message from Redis
+   */
+  private void handleAuthCompletionMessage(JsonNode data) {
+    String playerName = data.path("playerName").asText();
+    String playerUuid = data.path("playerUuid").asText();
+    String message = data.path("message").asText();
+
+    logger.info("🎉 Processing auth completion from Redis for player: {} ({})", playerName, playerUuid);
+    sendAuthCompletionToMc(playerName, playerUuid, message);
   }
 
   /**

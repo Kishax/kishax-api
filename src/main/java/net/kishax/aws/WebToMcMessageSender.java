@@ -108,6 +108,26 @@ public class WebToMcMessageSender {
   }
 
   /**
+   * Send authentication completion message to MC
+   */
+  public void sendAuthCompletion(String playerName, String playerUuid, String message) {
+    try {
+      ObjectNode messageObj = objectMapper.createObjectNode();
+      messageObj.put("type", "web_mc_auth_completion");
+      messageObj.put("playerName", playerName);
+      messageObj.put("playerUuid", playerUuid);
+      messageObj.put("message", message);
+      messageObj.put("timestamp", System.currentTimeMillis());
+
+      sendMessage(messageObj, "web_mc_auth_completion");
+      logger.info("✅ Auth completion sent to MC: {} ({})", playerName, playerUuid);
+    } catch (Exception e) {
+      logger.error("❌ Failed to send auth completion to MC: {} ({})", playerName, playerUuid, e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
    * Send generic message to MC
    */
   public void sendGenericMessage(String messageType, Object payload) {
