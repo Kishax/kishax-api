@@ -121,12 +121,12 @@ mvn clean package
 ### Fat JAR (with dependencies)
 ```bash
 mvn clean package
-# Produces: target/kishax-aws-1.0.0-SNAPSHOT-with-dependencies.jar
+# Produces: target/kishax-aws-<version>-with-dependencies.jar
 ```
 
 ### Running the Application
 ```bash
-java -jar target/kishax-aws-1.0.0-SNAPSHOT-with-dependencies.jar
+java -jar target/kishax-aws-<version>-with-dependencies.jar
 ```
 
 ## Docker Services
@@ -171,7 +171,7 @@ This package is intended to be published to Maven Central as `net.kishax:kishax-
 <dependency>
     <groupId>net.kishax</groupId>
     <artifactId>kishax-aws</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.3</version>
 </dependency>
 ```
 
