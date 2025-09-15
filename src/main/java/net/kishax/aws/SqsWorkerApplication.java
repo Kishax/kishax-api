@@ -55,7 +55,8 @@ public class SqsWorkerApplication {
           redisClient,
           webToMcSender,
           mcToWebSender,
-          webApiClient);
+          webApiClient,
+          config);
 
       // Set up shutdown hook
       Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));

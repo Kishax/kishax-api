@@ -25,6 +25,7 @@ class SqsWorkerTest {
   private RedisClient redisClient;
 
   private SqsWorker sqsWorker;
+  private final Configuration configuration = new Configuration();
   private final String testQueueUrl = "https://sqs.ap-northeast-1.amazonaws.com/123456789012/test-queue";
   private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -33,7 +34,8 @@ class SqsWorkerTest {
     WebToMcMessageSender webToMcSender = mock(WebToMcMessageSender.class);
     McToWebMessageSender mcToWebSender = mock(McToWebMessageSender.class);
     WebApiClient webApiClient = mock(WebApiClient.class);
-    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient);
+    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient,
+        configuration);
   }
 
   @Test

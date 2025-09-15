@@ -29,6 +29,7 @@ public class SqsWorker {
   private final WebToMcMessageSender webToMcSender;
   private final McToWebMessageSender mcToWebSender;
   private final WebApiClient webApiClient;
+  private final Configuration configuration;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private RedisClient.RedisSubscription webToMcSubscription;
@@ -51,7 +52,7 @@ public class SqsWorker {
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
-      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient) {
+      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient, Configuration configuration) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.queueMode = queueMode;
@@ -59,6 +60,7 @@ public class SqsWorker {
     this.webToMcSender = webToMcSender;
     this.mcToWebSender = mcToWebSender;
     this.webApiClient = webApiClient;
+    this.configuration = configuration;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
     this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -94,7 +96,7 @@ public class SqsWorker {
     WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
 
     return new SqsWorker(sqsClient, pollingQueueUrl, queueMode, redisClient, webToMcSender, mcToWebSender,
-        webApiClient);
+        webApiClient, config);
   }
 
   /**
@@ -107,8 +109,9 @@ public class SqsWorker {
       logger.info("🔧 Queue mode: {}", queueMode);
       System.out.println("SQS Worker started - Queue URL: " + queueUrl);
 
-      // Start polling with 5 second interval
-      executor.scheduleWithFixedDelay(this::pollMessages, 0, 5, TimeUnit.SECONDS);
+      // Start polling with configured interval
+      int pollingInterval = configuration.getSqsWorkerPollingInterval();
+      executor.scheduleWithFixedDelay(this::pollMessages, 0, pollingInterval, TimeUnit.SECONDS);
 
       // Subscribe to Redis Pub/Sub for web_to_mc messages if QUEUE_MODE is WEB
       if ("WEB".equalsIgnoreCase(queueMode)) {
@@ -168,9 +171,9 @@ public class SqsWorker {
       System.out.println("SQS Worker: Polling for messages...");
       ReceiveMessageRequest request = ReceiveMessageRequest.builder()
           .queueUrl(queueUrl)
-          .maxNumberOfMessages(10)
-          .waitTimeSeconds(5) // Reduced wait time for testing
-          .visibilityTimeout(30)
+          .maxNumberOfMessages(configuration.getSqsWorkerMaxMessages())
+          .waitTimeSeconds(configuration.getSqsWorkerWaitTime())
+          .visibilityTimeout(configuration.getSqsWorkerVisibilityTimeout())
           .messageAttributeNames("All") // Receive all message attributes for compatibility
           .build();
 
