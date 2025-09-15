@@ -65,7 +65,9 @@ public class WebApiClient {
 
       HttpRequest request = requestBuilder.build();
 
-      logger.info("📤 Sending auth token to WEB API: {} for player {}", webApiUrl + "/api/mc/auth-token", mcid);
+      logger.info("📤 Sending auth token to WEB API: {} for player {} - Payload: {}",
+          webApiUrl + "/api/mc/auth-token", mcid, requestBody);
+      logger.debug("🔍 Request headers: {}", request.headers().map());
 
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
@@ -75,11 +77,15 @@ public class WebApiClient {
         logger.error("❌ WEB API returned error status: {} - Body: {}", response.statusCode(), response.body());
       }
 
-    } catch (IOException | InterruptedException e) {
-      logger.error("❌ Failed to send auth token to WEB API: {}", e.getMessage(), e);
+    } catch (IOException e) {
+      logger.error("❌ Network error sending auth token to WEB API - URL: {}, Error: {}",
+          webApiUrl + "/api/mc/auth-token", e.getMessage(), e);
+    } catch (InterruptedException e) {
+      logger.error("❌ Request interrupted while sending auth token to WEB API: {}", e.getMessage(), e);
       Thread.currentThread().interrupt();
     } catch (Exception e) {
-      logger.error("❌ Unexpected error sending auth token to WEB API: {}", e.getMessage(), e);
+      logger.error("❌ Unexpected error sending auth token to WEB API - Type: {}, Message: {}",
+          e.getClass().getSimpleName(), e.getMessage(), e);
     }
   }
 
