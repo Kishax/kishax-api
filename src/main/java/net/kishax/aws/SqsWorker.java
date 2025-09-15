@@ -214,7 +214,8 @@ public class SqsWorker {
         logger.debug("📋 Message attributes - Type: {}, Source: {}", messageType, source);
       }
 
-      logger.info("🔍 Processing message type: {}", messageType);
+      logger.info("🔍 Processing message type: {} (ID: {}, Receipt: {})",
+          messageType, message.messageId(), message.receiptHandle().substring(0, 20) + "...");
 
       switch (messageType) {
         case "auth_token" -> {
@@ -613,7 +614,8 @@ public class SqsWorker {
           .build();
 
       sqsClient.deleteMessage(deleteRequest);
-      logger.debug("🗑️ Message deleted: {}", message.messageId());
+      logger.info("🗑️ Message deleted successfully: {} (Receipt: {})",
+          message.messageId(), message.receiptHandle().substring(0, 20) + "...");
     } catch (Exception error) {
       logger.error("❌ Error deleting SQS message: {}", error.getMessage(), error);
     }
