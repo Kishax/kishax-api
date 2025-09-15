@@ -233,8 +233,13 @@ public class SqsWorker {
         logger.debug("📋 Message attributes - Type: {}, Source: {}", messageType, source);
       }
 
+      String receiptHandleSnippet = message.receiptHandle();
+      if (receiptHandleSnippet != null && receiptHandleSnippet.length() > 20) {
+        receiptHandleSnippet = receiptHandleSnippet.substring(0, 20) + "...";
+      }
+
       logger.info("🔍 Processing message type: {} (ID: {}, Receipt: {})",
-          messageType, message.messageId(), message.receiptHandle().substring(0, 20) + "...");
+          messageType, message.messageId(), receiptHandleSnippet);
 
       switch (messageType) {
         case "auth_token" -> {
