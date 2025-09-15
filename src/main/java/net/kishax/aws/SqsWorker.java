@@ -36,6 +36,7 @@ public class SqsWorker {
 
   // Callback for OTP display integration
   private static OtpDisplayCallback otpDisplayCallback;
+  private static AuthConfirmCallback authConfirmCallback;
 
   /**
    * Interface for OTP display callback
@@ -45,10 +46,24 @@ public class SqsWorker {
   }
 
   /**
+   * Interface for auth confirm callback
+   */
+  public interface AuthConfirmCallback {
+    void onAuthConfirm(String playerName, String playerUuid);
+  }
+
+  /**
    * Set the OTP display callback
    */
   public static void setOtpDisplayCallback(OtpDisplayCallback callback) {
     otpDisplayCallback = callback;
+  }
+
+  /**
+   * Set the Auth Confirm callback
+   */
+  public static void setAuthConfirmCallback(AuthConfirmCallback callback) {
+    authConfirmCallback = callback;
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
@@ -410,16 +425,31 @@ public class SqsWorker {
     try {
       String playerName = data.path("playerName").asText();
       String playerUuid = data.path("playerUuid").asText();
-      long timestamp = data.path("timestamp").asLong(System.currentTimeMillis());
 
       logger.info("🔐 Processing web to MC auth confirm for player: {} ({})", playerName, playerUuid);
 
-      // Send auth confirm to MC via WebToMcMessageSender
-      if (webToMcSender != null) {
-        webToMcSender.sendAuthConfirm(playerName, playerUuid);
-        logger.info("📤 Auth confirm sent to MC for player: {}", playerName);
-      } else {
-        logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm to MC");
+      if ("WEB".equalsIgnoreCase(queueMode)) {
+        // We are in the kishax-aws service, forward to MC
+        logger.info("➡️ Forwarding auth confirm to MC plugin...");
+        if (webToMcSender != null) {
+          webToMcSender.sendAuthConfirm(playerName, playerUuid);
+          logger.info("📤 Auth confirm sent to MC for player: {}", playerName);
+        } else {
+          logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm to MC");
+        }
+      } else { // Assuming "MC" mode
+        // We are in the mc-plugin, execute the action via callback
+        logger.info("🔔 Executing auth confirm callback for player: {}", playerName);
+        if (authConfirmCallback != null) {
+          try {
+            authConfirmCallback.onAuthConfirm(playerName, playerUuid);
+            logger.info("✅ Auth confirm callback executed for player: {}", playerName);
+          } catch (Exception callbackError) {
+            logger.error("❌ Auth confirm callback failed for player: {} ({})", playerName, playerUuid, callbackError);
+          }
+        } else {
+          logger.warn("⚠️ No auth confirm callback registered in MC mode.");
+        }
       }
 
       logger.info("✅ Web MC auth confirm message processed successfully");
@@ -430,16 +460,7 @@ public class SqsWorker {
     }
   }
 
-  /**
-   * Send auth confirm message to MC
-   */
-  public void sendAuthConfirmToMc(String playerName, String playerUuid) {
-    if (webToMcSender != null) {
-      webToMcSender.sendAuthConfirm(playerName, playerUuid);
-    } else {
-      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm");
-    }
-  }
+  
 
   /**
    * Send OTP to MC
@@ -562,7 +583,13 @@ public class SqsWorker {
     String playerUuid = data.path("playerUuid").asText();
 
     logger.info("🔒 Processing auth confirm from Redis for player: {} ({})", playerName, playerUuid);
-    sendAuthConfirmToMc(playerName, playerUuid);
+    // This handler only runs in WEB mode, so always forward to MC via SQS.
+    if (webToMcSender != null) {
+      webToMcSender.sendAuthConfirm(playerName, playerUuid);
+      logger.info("📤 Auth confirm sent to MC for player: {}", playerName);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth confirm to MC");
+    }
   }
 
   /**
