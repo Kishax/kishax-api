@@ -54,7 +54,7 @@ public class WebApiClient {
           .uri(URI.create(webApiUrl + "/api/mc/auth-token"))
           .version(HttpClient.Version.HTTP_1_1) // Ensure HTTP/1.1
           .header("Content-Type", "application/json")
-          .header("User-Agent", "Kishax-AWS-Client/1.0.3")
+          .header("User-Agent", "Kishax-AWS-Client/1.0.4")
           .POST(HttpRequest.BodyPublishers.ofString(requestBody))
           .timeout(Duration.ofSeconds(30));
 

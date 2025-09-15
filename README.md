@@ -171,7 +171,7 @@ This package is intended to be published to Maven Central as `net.kishax:kishax-
 <dependency>
     <groupId>net.kishax</groupId>
     <artifactId>kishax-aws</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
