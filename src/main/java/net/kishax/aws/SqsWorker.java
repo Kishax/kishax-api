@@ -67,7 +67,8 @@ public class SqsWorker {
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
-      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient, Configuration configuration) {
+      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient,
+      Configuration configuration) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
     this.queueMode = queueMode;
@@ -459,8 +460,6 @@ public class SqsWorker {
       throw new RuntimeException(error); // Re-throw to prevent message deletion on error
     }
   }
-
-  
 
   /**
    * Send OTP to MC
