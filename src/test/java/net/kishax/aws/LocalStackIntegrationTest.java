@@ -87,7 +87,8 @@ class LocalStackIntegrationTest {
     Configuration config = new Configuration();
 
     // Setup SqsWorker with direct dependencies
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient, config);
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient,
+        config);
 
     objectMapper = new ObjectMapper();
     objectMapper.registerModule(new JavaTimeModule());
