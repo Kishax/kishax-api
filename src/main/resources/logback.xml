@@ -8,9 +8,9 @@
   </appender>
   <!-- File appender -->
   <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE">
-    <file>logs/kishax-aws.log</file>
+    <file>logs/kishax-api.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>logs/kishax-aws.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>logs/kishax-api.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <maxFileSize>100MB</maxFileSize>
       </timeBasedFileNamingAndTriggeringPolicy>
@@ -21,8 +21,8 @@
       <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  <!-- Logger for Kishax AWS -->
-  <logger level="${LOG_LEVEL:-INFO}" name="net.kishax.aws"></logger>
+  <!-- Logger for Kishax API -->
+  <logger level="${LOG_LEVEL:-INFO}" name="net.kishax.api"></logger>
   <!-- Logger for AWS SDK -->
   <logger level="${AWS_SDK_LOG_LEVEL:-WARN}" name="software.amazon.awssdk"></logger>
   <!-- Logger for Lettuce (Redis) -->

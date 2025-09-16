@@ -1,4 +1,4 @@
-package net.kishax.aws.auth;
+package net.kishax.api.auth;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

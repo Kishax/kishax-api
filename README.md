@@ -1,6 +1,6 @@
-# Kishax AWS Integration
+# Kishax API Integration
 
-AWS SQS and Redis integration library for Kishax Minecraft infrastructure. This library replaces the Node.js sqs-worker with a Java-based solution that enables communication between Minecraft plugins and the web application.
+API server and AWS SQS/Redis integration library for Kishax Minecraft infrastructure. This library provides authentication API endpoints and communication between Minecraft plugins and the web application.
 
 ## Architecture
 

@@ -1,4 +1,4 @@
-package net.kishax.aws;
+package net.kishax.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;

@@ -1,4 +1,4 @@
-package net.kishax.aws.auth;
+package net.kishax.api.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Instant;

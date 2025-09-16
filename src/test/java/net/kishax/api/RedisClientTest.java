@@ -1,4 +1,4 @@
-package net.kishax.aws;
+package net.kishax.api;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

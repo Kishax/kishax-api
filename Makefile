@@ -32,22 +32,22 @@ test-prod:
 
 # Publish to Sonatype repository
 publish:
-	@echo "📦 Publishing kishax-aws to Sonatype repository..."
+	@echo "📦 Publishing kishax-api to Sonatype repository..."
 	mvn clean deploy
-	@echo "✅ kishax-aws deployed successfully!"
+	@echo "✅ kishax-api deployed successfully!"
 
 .PHONY: run
 run:
 	@echo "INFO: Starting Kishax AWS SQS Worker..."
-	@java -jar target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar
+	@java -jar target/kishax-api-$(KISHAX_AWS_VERSION)-with-dependencies.jar
 
 .PHONY: build-no-tests-exec-and-compile
 build-no-tests-exec-and-compile:
-	@echo "INFO: Building kishax-aws without tests...(skip: execution and compilation)"
+	@echo "INFO: Building kishax-api without tests...(skip: execution and compilation)"
 	@mvn clean install -Dmaven.test.skip=true
-	@echo "✅ Build successful! JAR located at target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar"
+	@echo "✅ Build successful! JAR located at target/kishax-api-$(KISHAX_AWS_VERSION)-with-dependencies.jar"
 
 build-no-tests-exec:
-	@echo "INFO: Building kishax-aws without tests...(skip: execution)"
+	@echo "INFO: Building kishax-api without tests...(skip: execution)"
 	@mvn clean package -DskipTests
-	@echo "✅ Build successful! JAR located at target/kishax-aws-$(KISHAX_AWS_VERSION)-with-dependencies.jar"
+	@echo "✅ Build successful! JAR located at target/kishax-api-$(KISHAX_AWS_VERSION)-with-dependencies.jar"

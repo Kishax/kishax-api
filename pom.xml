@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0           http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>net.kishax.aws</groupId>
-  <artifactId>kishax-aws</artifactId>
+  <groupId>net.kishax.api</groupId>
+  <artifactId>kishax-api</artifactId>
   <version>1.0.4</version>
   <packaging>jar</packaging>
-  <name>Kishax AWS Integration</name>
-  <description>AWS SQS and Redis integration library for Kishax Minecraft infrastructure</description>
-  <url>https://github.com/Kishax/kishax-aws</url>
+  <name>Kishax API Integration</name>
+  <description>API server and AWS SQS/Redis integration library for Kishax Minecraft infrastructure</description>
+  <url>https://github.com/Kishax/kishax-api</url>
   <licenses>
     <license>
       <name>The Apache License, Version 2.0</name>
@@ -23,9 +23,9 @@
     </developer>
   </developers>
   <scm>
-    <connection>scm:git:https://github.com/Kishax/kishax-aws.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/Kishax/kishax-aws.git</developerConnection>
-    <url>https://github.com/Kishax/kishax-aws</url>
+    <connection>scm:git:https://github.com/Kishax/kishax-api.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/Kishax/kishax-api.git</developerConnection>
+    <url>https://github.com/Kishax/kishax-api</url>
   </scm>
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
@@ -193,7 +193,7 @@
               <shadedClassifierName>with-dependencies</shadedClassifierName>
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>net.kishax.aws.SqsWorkerApplication</mainClass>
+                  <mainClass>net.kishax.api.SqsWorkerApplication</mainClass>
                 </transformer>
               </transformers>
             </configuration>

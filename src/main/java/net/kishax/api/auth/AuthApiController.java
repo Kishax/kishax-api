@@ -1,4 +1,4 @@
-package net.kishax.aws.auth;
+package net.kishax.api.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;

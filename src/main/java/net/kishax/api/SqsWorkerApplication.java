@@ -1,10 +1,10 @@
-package net.kishax.aws;
+package net.kishax.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.javalin.Javalin;
-import net.kishax.aws.auth.AuthApiController;
-import net.kishax.aws.auth.DatabaseService;
+import net.kishax.api.auth.AuthApiController;
+import net.kishax.api.auth.DatabaseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
