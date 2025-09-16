@@ -88,6 +88,24 @@
       <artifactId>httpclient5</artifactId>
       <version>5.2.1</version>
     </dependency>
+    <!-- HTTP Server (Javalin) -->
+    <dependency>
+      <groupId>io.javalin</groupId>
+      <artifactId>javalin</artifactId>
+      <version>6.1.6</version>
+    </dependency>
+    <!-- PostgreSQL Driver -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.7.3</version>
+    </dependency>
+    <!-- Connection Pooling -->
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <version>5.1.0</version>
+    </dependency>
     <!-- Test Dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>

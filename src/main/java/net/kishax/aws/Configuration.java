@@ -148,6 +148,24 @@ public class Configuration {
     return getIntProperty("sqs.worker.waitTimeSeconds", 20);
   }
 
+  // Auth API Configuration
+  public boolean isAuthApiEnabled() {
+    return getBooleanProperty("auth.api.enabled", true);
+  }
+
+  public int getAuthApiPort() {
+    return getIntProperty("auth.api.port", 8080);
+  }
+
+  public String getAuthApiKey() {
+    return getProperty("auth.api.key");
+  }
+
+  // Database Configuration
+  public String getDatabaseUrl() {
+    return getProperty("database.url");
+  }
+
   public int getSqsWorkerVisibilityTimeout() {
     return getIntProperty("sqs.worker.visibilityTimeoutSeconds", 30);
   }

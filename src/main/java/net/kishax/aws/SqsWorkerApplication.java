@@ -1,5 +1,10 @@
 package net.kishax.aws;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.javalin.Javalin;
+import net.kishax.aws.auth.AuthApiController;
+import net.kishax.aws.auth.DatabaseService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -14,6 +19,8 @@ public class SqsWorkerApplication {
   private SqsWorker sqsWorker;
   private RedisClient redisClient;
   private SqsClient sqsClient;
+  private DatabaseService databaseService;
+  private Javalin authApiServer;
 
   public static void main(String[] args) {
     SqsWorkerApplication app = new SqsWorkerApplication();
@@ -37,6 +44,11 @@ public class SqsWorkerApplication {
       this.sqsClient = config.createSqsClient();
       this.redisClient = config.createRedisClient();
 
+      // Initialize database service
+      if (config.getDatabaseUrl() != null && config.isAuthApiEnabled()) {
+        this.databaseService = new DatabaseService(config.getDatabaseUrl());
+      }
+
       // Create WebToMcMessageSender
       WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getWebToMcQueueUrl());
 
@@ -46,6 +58,11 @@ public class SqsWorkerApplication {
 
       // Create WebApiClient
       WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
+
+      // Start Auth API Server if enabled
+      if (config.isAuthApiEnabled() && databaseService != null) {
+        startAuthApiServer(config);
+      }
 
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(
@@ -78,13 +95,46 @@ public class SqsWorkerApplication {
     }
   }
 
+  private void startAuthApiServer(Configuration config) {
+    try {
+      ObjectMapper objectMapper = new ObjectMapper();
+      objectMapper.registerModule(new JavaTimeModule());
+
+      AuthApiController authController = new AuthApiController(
+          databaseService,
+          objectMapper,
+          config.getAuthApiKey());
+
+      this.authApiServer = Javalin.create(javalinConfig -> {
+        javalinConfig.showJavalinBanner = false;
+      }).start(config.getAuthApiPort());
+
+      authController.setupRoutes(authApiServer);
+
+      logger.info("✅ Auth API Server started on port {}", config.getAuthApiPort());
+    } catch (Exception e) {
+      logger.error("❌ Failed to start Auth API Server: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to start Auth API Server", e);
+    }
+  }
+
   private void shutdown() {
     logger.info("🔄 Received shutdown signal, shutting down gracefully...");
 
     try {
+      if (authApiServer != null) {
+        authApiServer.stop();
+        logger.info("✅ Auth API Server stopped");
+      }
+
       if (sqsWorker != null) {
         sqsWorker.stop();
         logger.info("✅ SQS Worker stopped");
+      }
+
+      if (databaseService != null) {
+        databaseService.close();
+        logger.info("✅ Database service closed");
       }
 
       if (redisClient != null) {
