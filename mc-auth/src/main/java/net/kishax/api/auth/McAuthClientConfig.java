@@ -67,6 +67,18 @@ public class McAuthClientConfig {
     return new McAuthClientConfig(apiUrl, apiKey);
   }
 
+  /**
+   * 指定されたパラメータからクライアント設定を作成
+   *
+   * @param apiUrl API URL
+   * @param apiKey API キー
+   * @return 設定インスタンス
+   * @throws IllegalArgumentException パラメータが無効な場合
+   */
+  public static McAuthClientConfig fromParameters(String apiUrl, String apiKey) {
+    return new McAuthClientConfig(apiUrl, apiKey);
+  }
+
   @Override
   public String toString() {
     return "McAuthClientConfig{" +
