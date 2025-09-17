@@ -1,25 +1,36 @@
-# Kishax AWS Integration
+# Kishax API - Multi-Module Architecture
 
-AWS SQS and Redis integration library for Kishax Minecraft infrastructure. This library replaces the Node.js sqs-worker with a Java-based solution that enables communication between Minecraft plugins and the web application.
+A comprehensive API server and AWS SQS/Redis integration system for Kishax Minecraft infrastructure. This multi-module Maven project provides authentication services and seamless communication between Minecraft plugins and the web application.
 
-## Architecture
+## 🏗️ Architecture
 
 ```
-MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web App (TypeScript)
+MC Plugins (Java) ↔ AWS SQS ↔ SQS-Redis Bridge ↔ Redis Pub/Sub ↔ Next.js Web App (TypeScript)
+                                        ↕
+                                   MC Auth API
 ```
 
-- **MC → Web**: SQS messages processed by Java worker, stored in Redis, published to pub/sub
+### Module Overview
+
+- **`common`**: Shared configuration, utilities, and AWS/Redis client management
+- **`sqs-redis-bridge`**: SQS message processing and Redis pub/sub bridge service
+- **`mc-auth`**: Minecraft authentication API server with database integration
+
+### Communication Flow
+
+- **MC → Web**: SQS messages processed by bridge, stored in Redis, published to pub/sub
 - **Web → MC**: Messages sent via SQS, polled by MC plugins
-- **Real-time communication**: Redis pub/sub between Java worker and TypeScript web app
+- **Authentication**: Direct API calls to MC Auth service
+- **Real-time communication**: Redis pub/sub between bridge and TypeScript web app
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Development Testing (LocalStack)
 
 1. **Configure environment:**
    ```bash
-   cp .env.local.example .env.local
-   # Edit .env.local if needed (optional for development)
+   cp .env.example .env
+   # Edit .env if needed (defaults to local development settings)
    ```
 
 2. **Run development tests:**
@@ -27,12 +38,18 @@ MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web 
    make test-local
    ```
 
+3. **Start development stack:**
+   ```bash
+   docker compose --profile test up
+   ```
+
 ### Production Testing (Real AWS)
 
 1. **Configure environment:**
    ```bash
-   cp .env.prod.example .env.prod
-   # Edit .env.prod with your AWS credentials and queue URLs
+   cp .env.example .env
+   # Uncomment and edit production settings in .env
+   # Set ENVIRONMENT=production
    ```
 
 2. **Run production tests:**
@@ -40,40 +57,91 @@ MC Plugins (Java) ↔ AWS SQS ↔ Java Worker ↔ Redis Pub/Sub ↔ Next.js Web 
    make test-prod
    ```
 
-## Configuration
+3. **Deploy production services:**
+   ```bash
+   docker compose --profile production up
+   ```
+
+## ⚙️ Configuration
+
+### Unified Environment Configuration
+
+The project uses a single `.env` file for both local and production environments. Copy `.env.example` to `.env` and configure as needed.
+
+**Environment Modes:**
+- `ENVIRONMENT=local` (default): Uses LocalStack and local services
+- `ENVIRONMENT=production`: Uses real AWS services (uncomment production overrides)
 
 ### Environment Variables
 
+#### Core AWS Configuration
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `AWS_ACCESS_KEY_ID` | AWS access key | Yes (prod) |
-| `AWS_SECRET_ACCESS_KEY` | AWS secret key | Yes (prod) |
-| `AWS_DEFAULT_REGION` | AWS region | Yes (prod) |
-| `MC_WEB_SQS_QUEUE_URL` | MC→Web SQS queue URL | Yes |
-| `WEB_MC_SQS_QUEUE_URL` | Web→MC SQS queue URL | Yes |
-| `REDIS_URL` | Redis connection URL | Yes |
+| `AWS_REGION` | AWS region | Yes |
+| `MC_WEB_SQS_ACCESS_KEY_ID` | AWS access key ID | Yes (prod) |
+| `MC_WEB_SQS_SECRET_ACCESS_KEY` | AWS secret key | Yes (prod) |
+| `MC_TO_WEB_QUEUE_URL` | MC→Web SQS queue URL | Yes |
+| `WEB_TO_MC_QUEUE_URL` | Web→MC SQS queue URL | Yes |
 
-### Message Types
+#### Redis Configuration
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REDIS_URL` | Redis connection URL | `redis://localhost:6379` |
+| `REDIS_CONNECTION_TIMEOUT` | Connection timeout (ms) | `5000` |
+| `REDIS_COMMAND_TIMEOUT` | Command timeout (ms) | `3000` |
 
-#### MC → Web (via SQS)
+#### SQS Worker Configuration
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `QUEUE_MODE` | Operating mode (MC/WEB) | `MC` |
+| `SQS_WORKER_ENABLED` | Enable SQS worker | `true` |
+| `SQS_WORKER_POLLING_INTERVAL_SECONDS` | Polling interval | `5` |
+| `SQS_WORKER_MAX_MESSAGES` | Max messages per poll | `10` |
+| `SQS_WORKER_WAIT_TIME_SECONDS` | Long polling wait time | `20` |
+
+#### Authentication API Configuration
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AUTH_API_ENABLED` | Enable auth API | `true` |
+| `AUTH_API_PORT` | API server port | `8080` |
+| `AUTH_API_KEY` | API authentication key | Required |
+| `DATABASE_URL` | PostgreSQL database URL | Required |
+
+## 📨 Message Types
+
+### MC → Web (via SQS)
 - `auth_token`: Authentication token from MC plugin
 - `mc_otp_response`: OTP verification response
 - `mc_web_auth_response`: Web authentication response
 
-#### Web → MC (via SQS)
-- Messages are polled by MC plugins directly
+### Web → MC (via SQS)
+- `web_mc_auth_confirm`: Authentication confirmation
+- `web_mc_otp`: OTP code for verification
 
-## Usage
+## 💻 Usage
 
-### Java Worker Application
+### SQS-Redis Bridge Service
 
 ```java
 Configuration config = new Configuration();
 SqsWorker worker = new SqsWorker(config);
-worker.start(); // Starts polling SQS queues
+worker.start(); // Starts polling SQS queues and Redis pub/sub
 ```
 
-### Redis Client
+### MC Authentication API
+
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Authentication endpoint
+curl -X POST http://localhost:8080/api/auth/check \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"playerName": "TestPlayer", "playerUuid": "uuid-here"}'
+```
+
+### Redis Client Usage
 
 ```java
 RedisClient redis = new RedisClient("redis://localhost:6379");
@@ -86,10 +154,12 @@ MyData data = redis.get("key", MyData.class);
 
 // Pub/Sub
 redis.publish("channel", message);
-CompletableFuture<MyData> future = redis.waitForMessage("channel", MyData.class, Duration.ofSeconds(10));
+CompletableFuture<MyData> future = redis.waitForMessage(
+    "channel", MyData.class, Duration.ofSeconds(10)
+);
 ```
 
-## Testing
+## 🧪 Testing
 
 ### Unit Tests
 ```bash
@@ -108,127 +178,89 @@ RUN_REAL_AWS_TESTS=true mvn test -Dtest=RealAwsIntegrationTest
 
 ### Docker Test Environment
 ```bash
-docker compose --profile test up
+docker compose --profile test up --build
 ```
 
-## Building
+## 🔨 Building
 
-### Regular JAR
+### Multi-Module Build
 ```bash
-mvn clean package
+# Build all modules
+mvn clean install
+
+# Build specific module
+mvn clean install -pl sqs-redis-bridge -am
+
+# Skip tests
+mvn clean install -DskipTests
 ```
 
-### Fat JAR (with dependencies)
+### Docker Images
 ```bash
-mvn clean package
-# Produces: target/kishax-aws-<version>-with-dependencies.jar
+# Build all service images
+docker compose build
+
+# Build specific service
+docker build -f Dockerfile.bridge -t kishax-bridge .
+docker build -f Dockerfile.auth -t kishax-auth .
 ```
 
-### Running the Application
+### Running Services
+
+#### SQS-Redis Bridge
 ```bash
-java -jar target/kishax-aws-<version>-with-dependencies.jar
+java -jar sqs-redis-bridge/target/sqs-redis-bridge-*.jar
 ```
 
-## Docker Services
+#### MC Authentication API
+```bash
+java -jar mc-auth/target/mc-auth-*.jar
+```
+
+## 🐳 Docker Services
 
 ### Development Stack
-- **Redis**: `redis:7-alpine` on port 6379
+- **Redis**: `redis:7-alpine` on port 6379 (mapped to avoid host conflicts)
 - **LocalStack**: `localstack/localstack:3.0` on port 4566
   - Provides: SQS, S3, CloudFormation, IAM
+
+### Production Services
+- **SQS-Redis Bridge**: Containerized message processing service
+- **MC Auth API**: Containerized authentication service
 
 ### Health Checks
 - Redis: `redis-cli ping`
 - LocalStack: `curl -f http://localhost:4566/health`
+- Auth API: `curl -f http://localhost:8080/health`
 
-## Security
+## 🚢 Deployment
 
-- All credentials are loaded from environment variables
-- No hardcoded secrets in the codebase
-- API authentication for web app communication
+### Make Commands
+```bash
+make test-local    # Local testing with LocalStack
+make test-prod     # Production testing with real AWS
+make build         # Build all modules
+make publish       # Publish to Maven Central
+make clean         # Clean build artifacts
+```
+
+### Maven Central Publishing
+```bash
+# Configure GPG signing and credentials in ~/.m2/settings.xml
+make publish
+```
+
+## 🔒 Security
+
+- All credentials loaded from environment variables
+- No hardcoded secrets in codebase
+- API key authentication for web app communication
 - AWS IAM roles recommended for production
+- PostgreSQL connection security with SSL support
+- Docker containers run as non-root users
 
-## Requirements
+## 📄 License
 
-- Java 21+
-- Maven 3.6+
-- Docker & Docker Compose (for testing)
-- Redis (local or remote)
-- AWS SQS queues (real or LocalStack)
+Licensed under the Apache License 2.0. See [LICENSE](LICENSE) file for details.
 
-## Dependencies
-
-- AWS SDK for Java v2
-- Lettuce Redis Client
-- Jackson JSON processing
-- SLF4J + Logback logging
-- JUnit 5 + Mockito + TestContainers
-
-## Publishing to Maven
-
-This package is intended to be published to Maven Central as `net.kishax:kishax-aws`.
-
-```xml
-<dependency>
-    <groupId>net.kishax</groupId>
-    <artifactId>kishax-aws</artifactId>
-    <version>1.0.4</version>
-</dependency>
-```
-
-### ビルド
-
-```bash
-mvn clean compile
-mvn clean package
-mvn clean install
-```
-
-### Maven リポジトリへの公開
-
-```bash
-# スナップショット版
-mvn clean deploy
-
-# リリース版
-mvn release:prepare release:perform
-```
-
-## ログ
-
-ログは以下の場所に出力されます：
-
-- コンソール出力: 標準出力/エラー出力
-- ファイル出力: `logs/kishax-aws.log`（ローテーション付き）
-
-ログレベルは環境変数 `LOG_LEVEL` で制御可能（DEBUG, INFO, WARN, ERROR）。
-
-## トラブルシューティング
-
-### よくある問題
-
-1. **AWS 認証エラー**: ACCESS_KEY と SECRET_KEY が正しく設定されているか確認
-2. **Redis 接続エラー**: Redis サーバーが起動しているか、URL が正しいか確認
-3. **SQS 権限エラー**: IAM ポリシーで SQS の読み取り/削除権限があるか確認
-4. **Web API エラー**: INTERNAL_API_KEY が設定されているか確認
-
-### デバッグ
-
-```bash
-# デバッグログを有効化
-LOG_LEVEL=DEBUG java -jar kishax-aws.jar
-
-# AWS SDK のデバッグログ
-AWS_SDK_LOG_LEVEL=DEBUG java -jar kishax-aws.jar
-```
-
-## 貢献
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add amazing feature'`)
-4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
-
-## ライセンス
-
-このプロジェクトは [ライセンス名] の下でライセンスされています。
+Copyright 2025 Kishax
