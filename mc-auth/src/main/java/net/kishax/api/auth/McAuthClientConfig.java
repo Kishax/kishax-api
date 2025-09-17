@@ -34,14 +34,14 @@ public class McAuthClientConfig {
    * @throws IllegalStateException 必要な環境変数が設定されていない場合
    */
   public static McAuthClientConfig fromEnvironment() {
-    String apiUrl = System.getenv("MCAUTH_API_URL");
-    String apiKey = System.getenv("MCAUTH_API_KEY");
+    String apiUrl = System.getenv("AUTH_API_URL");
+    String apiKey = System.getenv("AUTH_API_KEY");
 
     if (apiUrl == null || apiUrl.trim().isEmpty()) {
-      throw new IllegalStateException("MCAUTH_API_URL environment variable is required");
+      throw new IllegalStateException("AUTH_API_URL environment variable is required");
     }
     if (apiKey == null || apiKey.trim().isEmpty()) {
-      throw new IllegalStateException("MCAUTH_API_KEY environment variable is required");
+      throw new IllegalStateException("AUTH_API_KEY environment variable is required");
     }
 
     return new McAuthClientConfig(apiUrl, apiKey);
@@ -54,8 +54,8 @@ public class McAuthClientConfig {
    * @throws IllegalStateException 必要なシステムプロパティが設定されていない場合
    */
   public static McAuthClientConfig fromSystemProperties() {
-    String apiUrl = System.getProperty("mcauth.api.url");
-    String apiKey = System.getProperty("mcauth.api.key");
+    String apiUrl = System.getProperty("auth.api.url");
+    String apiKey = System.getProperty("auth.api.key");
 
     if (apiUrl == null || apiUrl.trim().isEmpty()) {
       throw new IllegalStateException("mcauth.api.url system property is required");
