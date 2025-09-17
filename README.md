@@ -259,10 +259,6 @@ make publish
 - PostgreSQL connection security with SSL support
 - Docker containers run as non-root users
 
-## 📝 Version
-
-Current version: **1.0.4**
-
 ## 📄 License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE) file for details.
