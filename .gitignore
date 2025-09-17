@@ -1,9 +1,11 @@
+# Temporary directories
 tmp/
+temp/
 
-# Compiled class file
+# Compiled class files
 *.class
 
-# Log file
+# Log files
 *.log
 logs/
 
@@ -13,7 +15,7 @@ logs/
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package Files
 *.jar
 *.war
 *.nar
@@ -22,9 +24,13 @@ logs/
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# virtual machine crash logs
 hs_err_pid*
 replay_pid*
+
+# =============================================================================
+# Build Tools
+# =============================================================================
 
 # Maven
 target/
@@ -45,15 +51,15 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-# IDE
+# =============================================================================
+# IDE Configuration Files
+# =============================================================================
+
+# IntelliJ IDEA
 .idea/
 *.iws
 *.iml
 *.ipr
-.vscode/
-*.swp
-*.swo
-*~
 
 # Eclipse
 .apt_generated
@@ -74,21 +80,47 @@ build/
 # VS Code
 .vscode/
 
-# Mac
+# Vim
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# Operating System Files
+# =============================================================================
+
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
 
 # Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+$RECYCLE.BIN/
 
-# Application specific
+# Linux
+.Trash-*
+
+# =============================================================================
+# Application Configuration & Secrets
+# =============================================================================
+
+# Environment configuration files (keep .example files)
+.env
+.env.local
+.env.dev
+.env.prod
+.env.staging
+
+# Spring Boot configuration files (keep .example files)
 application-local.properties
 application-dev.properties
 application-prod.properties
-.env
-.env.local
-.env.prod
+application-staging.properties
 
 # Credentials and secrets (safety net)
 **/credentials.*
@@ -98,12 +130,16 @@ application-prod.properties
 **/.aws/
 **/.ssh/
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.swp
-*.swo
+# =============================================================================
+# Docker & Container Files
+# =============================================================================
+
+# Docker build context
+.dockerignore
+
+# =============================================================================
+# Test & Coverage Reports
+# =============================================================================
 
 # Test coverage reports
 *.exec
@@ -113,3 +149,41 @@ coverage/
 # Surefire reports
 **/target/surefire-reports/
 **/target/failsafe-reports/
+
+# JUnit reports
+TEST-*.xml
+
+# =============================================================================
+# Temporary & Backup Files
+# =============================================================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Editor backup files
+*.swp
+*.swo
+*~
+
+# =============================================================================
+# LocalStack & Testing
+# =============================================================================
+
+# LocalStack data
+tmp/localstack/
+
+# Test databases
+*.db
+*.sqlite
+*.sqlite3
+
+# =============================================================================
+# Documentation Build Artifacts
+# =============================================================================
+
+# Generated documentation
+docs/build/
+docs/_build/
+site/

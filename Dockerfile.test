@@ -9,12 +9,19 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy project files
+# Copy parent POM and module POMs
 COPY pom.xml .
-COPY src ./src
+COPY common/pom.xml ./common/
+COPY sqs-redis-bridge/pom.xml ./sqs-redis-bridge/
+COPY mc-auth/pom.xml ./mc-auth/
 
-# Download dependencies
+# Copy source files
+COPY common/src ./common/src
+COPY sqs-redis-bridge/src ./sqs-redis-bridge/src
+COPY mc-auth/src ./mc-auth/src
+
+# Download dependencies for all modules
 RUN mvn dependency:go-offline -B
 
-# Default command for running tests
-CMD ["mvn", "test", "-Dtest=**/*IntegrationTest"]
+# Default command for running integration tests
+CMD ["mvn", "test", "-Dtest=**/*IntegrationTest", "-DRun_Integration_Tests=true"]
