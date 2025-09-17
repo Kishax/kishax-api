@@ -427,7 +427,7 @@ public class SqsWorker {
       logger.info("🔐 Processing web to MC auth confirm for player: {} ({})", playerName, playerUuid);
 
       if ("WEB".equalsIgnoreCase(queueMode)) {
-        // We are in the kishax-aws service, forward to MC
+        // We are in the kishax-api service, forward to MC
         logger.info("➡️ Forwarding auth confirm to MC plugin...");
         if (webToMcSender != null) {
           webToMcSender.sendAuthConfirm(playerName, playerUuid);
