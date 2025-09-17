@@ -3,8 +3,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: kishax-api-redis
-    ports:
-      - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
@@ -13,6 +11,8 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    profiles:
+      - test
 
   # LocalStack for AWS services emulation (SQS, etc.)
   localstack:
@@ -79,9 +79,6 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kishax-sqs-redis-bridge
-    depends_on:
-      redis:
-        condition: service_healthy
     environment:
       - ENVIRONMENT=production
       # AWS Configuration
@@ -91,7 +88,7 @@ services:
       - MC_TO_WEB_QUEUE_URL=${MC_TO_WEB_QUEUE_URL}
       - WEB_TO_MC_QUEUE_URL=${WEB_TO_MC_QUEUE_URL}
       # Redis Configuration
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - REDIS_URL=${REDIS_URL:-redis://host.docker.internal:6379}
       - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
       - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
       # Queue Configuration
