@@ -97,7 +97,7 @@ public class DatabaseService {
    */
   private AuthLevel determineAuthLevel(boolean confirmed, String kishaxUserId, List<String> activeProducts) {
     if (!confirmed) {
-      return AuthLevel.MC_AUTHENTICATED_TEMP;
+      return AuthLevel.MC_AUTHENTICATED_TRYING;
     }
 
     if (kishaxUserId == null) {
