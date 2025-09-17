@@ -67,7 +67,8 @@ class ConfigurationTest {
 
   @Test
   void testValidationWithNoErrors() {
-    // Base Configuration validation should not throw exceptions (empty implementation)
+    // Base Configuration validation should not throw exceptions (empty
+    // implementation)
     assertDoesNotThrow(() -> configuration.validate());
   }
 
