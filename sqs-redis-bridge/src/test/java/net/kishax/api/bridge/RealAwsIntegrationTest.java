@@ -71,8 +71,7 @@ class RealAwsIntegrationTest {
     // Setup SqsWorker
     webToMcSender = new WebToMcMessageSender(sqsClient, webMcQueueUrl);
     McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, mcWebQueueUrl, "real-aws-test");
-    WebApiClient webApiClient = new WebApiClient("http://localhost:3000", null);
-    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient,
+    sqsWorker = new SqsWorker(sqsClient, mcWebQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender,
         configuration);
 
     objectMapper = new ObjectMapper();

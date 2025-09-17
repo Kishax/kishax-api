@@ -45,9 +45,6 @@ public class SqsWorkerApplication {
       McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(),
           "sqs-redis-bridge");
 
-      // Create WebApiClient
-      WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
-
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(
           sqsClient,
@@ -56,7 +53,6 @@ public class SqsWorkerApplication {
           redisClient,
           webToMcSender,
           mcToWebSender,
-          webApiClient,
           config);
 
       // Set up shutdown hook

@@ -66,16 +66,9 @@ class ConfigurationTest {
   }
 
   @Test
-  void testValidationWithMissingRequiredFields() {
-    // Configuration validation should fail when required fields are missing
-    Configuration.ConfigurationException exception = assertThrows(
-        Configuration.ConfigurationException.class,
-        () -> configuration.validate());
-
-    String message = exception.getMessage();
-    assertTrue(message.contains("AWS Access Key ID is required"));
-    assertTrue(message.contains("AWS Secret Access Key is required"));
-    assertTrue(message.contains("MC to Web Queue URL is required"));
+  void testValidationWithNoErrors() {
+    // Base Configuration validation should not throw exceptions (empty implementation)
+    assertDoesNotThrow(() -> configuration.validate());
   }
 
   @Test

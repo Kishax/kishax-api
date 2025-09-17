@@ -32,8 +32,7 @@ class SqsWorkerTest {
   void setUp() {
     WebToMcMessageSender webToMcSender = mock(WebToMcMessageSender.class);
     McToWebMessageSender mcToWebSender = mock(McToWebMessageSender.class);
-    WebApiClient webApiClient = mock(WebApiClient.class);
-    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender, webApiClient,
+    sqsWorker = new SqsWorker(sqsClient, testQueueUrl, "MC", redisClient, webToMcSender, mcToWebSender,
         configuration);
   }
 

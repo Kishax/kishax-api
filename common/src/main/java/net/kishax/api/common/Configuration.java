@@ -117,15 +117,6 @@ public class Configuration {
     return getIntProperty("redis.commandTimeout", 3000);
   }
 
-  // WEB API Configuration
-  public String getWebApiUrl() {
-    return getProperty("web.api.url", "http://localhost:3000");
-  }
-
-  public String getWebApiKey() {
-    return getProperty("web.api.key");
-  }
-
   // Queue Mode Configuration
   public String getQueueMode() {
     return getProperty("queue.mode", "MC").toUpperCase();

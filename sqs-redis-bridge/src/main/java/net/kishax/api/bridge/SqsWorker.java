@@ -29,7 +29,6 @@ public class SqsWorker {
   private final RedisClient redisClient;
   private final WebToMcMessageSender webToMcSender;
   private final McToWebMessageSender mcToWebSender;
-  private final WebApiClient webApiClient;
   private final Configuration configuration;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -68,7 +67,7 @@ public class SqsWorker {
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
-      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender, WebApiClient webApiClient,
+      WebToMcMessageSender webToMcSender, McToWebMessageSender mcToWebSender,
       Configuration configuration) {
     this.sqsClient = sqsClient;
     this.queueUrl = queueUrl;
@@ -76,7 +75,6 @@ public class SqsWorker {
     this.redisClient = redisClient;
     this.webToMcSender = webToMcSender;
     this.mcToWebSender = mcToWebSender;
-    this.webApiClient = webApiClient;
     this.configuration = configuration;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
@@ -109,11 +107,8 @@ public class SqsWorker {
     String sourceId = "MC".equals(queueMode) ? "mc-server" : "web-app";
     McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, sendingQueueUrl, sourceId);
 
-    // Create WebApiClient
-    WebApiClient webApiClient = new WebApiClient(config.getWebApiUrl(), config.getWebApiKey());
-
     return new SqsWorker(sqsClient, pollingQueueUrl, queueMode, redisClient, webToMcSender, mcToWebSender,
-        webApiClient, config);
+        config);
   }
 
   /**
@@ -306,17 +301,13 @@ public class SqsWorker {
       redisClient.publish(channelName, authTokenData);
       logger.info("📡 Published auth token notification: {}", channelName);
 
-      // Send auth token to WEB API (primary integration method)
+      // Send auth token to WEB via Redis (primary integration method)
       try {
-        if (webApiClient != null) {
-          webApiClient.sendAuthToken(mcid, uuid, authToken, expiresAt, action);
-          logger.info("✅ Auth token sent to WEB API for player: {}", mcid);
-        } else {
-          logger.warn("⚠️ WebApiClient is null, cannot send to WEB API");
-        }
-      } catch (Exception webApiError) {
-        logger.error("❌ Failed to send auth token to WEB API (continuing with Redis): {}", webApiError.getMessage());
-        // Don't re-throw - Redis integration can still work
+        redisClient.sendAuthToken(mcid, uuid, authToken, expiresAt, action);
+        logger.info("✅ Auth token sent to WEB via Redis for player: {}", mcid);
+      } catch (Exception redisError) {
+        logger.error("❌ Failed to send auth token via Redis: {}", redisError.getMessage());
+        throw new RuntimeException("Failed to send auth token via Redis", redisError);
       }
 
       logger.info("✅ Successfully processed auth token for player: {}", mcid);

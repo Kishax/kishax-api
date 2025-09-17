@@ -10,6 +10,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -232,6 +235,38 @@ public class RedisClient {
     } catch (Exception e) {
       logger.error("❌ Error subscribing to Redis channel: {}", e.getMessage(), e);
       throw new RuntimeException("Failed to subscribe to Redis channel", e);
+    }
+  }
+
+  /**
+   * Send auth token message to Web via Redis
+   */
+  public void sendAuthToken(String mcid, String uuid, String authToken, long expiresAt, String action) {
+    try {
+      // Create message object
+      Map<String, Object> message = new HashMap<>();
+      message.put("type", "mc_auth_token");
+      message.put("source", "api");
+      message.put("timestamp", Instant.now().toString());
+
+      Map<String, Object> data = new HashMap<>();
+      data.put("mcid", mcid);
+      data.put("uuid", uuid);
+      data.put("authToken", authToken);
+      data.put("expiresAt", Instant.ofEpochMilli(expiresAt).toString());
+      data.put("action", action);
+      message.put("data", data);
+
+      String jsonMessage = objectMapper.writeValueAsString(message);
+
+      // Publish to mc_to_web channel (same channel Web is listening to)
+      publish("mc_to_web", jsonMessage);
+
+      logger.info("✅ Auth token sent via Redis for player: {} - Action: {}", mcid, action);
+
+    } catch (Exception e) {
+      logger.error("❌ Failed to send auth token via Redis for player {}: {}", mcid, e.getMessage(), e);
+      throw new RuntimeException("Failed to send auth token via Redis", e);
     }
   }
 
