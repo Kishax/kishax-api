@@ -257,10 +257,8 @@ public class RedisClient {
       data.put("action", action);
       message.put("data", data);
 
-      String jsonMessage = objectMapper.writeValueAsString(message);
-
       // Publish to mc_to_web channel (same channel Web is listening to)
-      publish("mc_to_web", jsonMessage);
+      publish("mc_to_web", message);
 
       logger.info("✅ Auth token sent via Redis for player: {} - Action: {}", mcid, action);
 
