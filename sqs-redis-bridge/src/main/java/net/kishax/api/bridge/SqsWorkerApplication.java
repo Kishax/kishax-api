@@ -15,6 +15,8 @@ public class SqsWorkerApplication {
   private SqsWorker sqsWorker;
   private RedisClient redisClient;
   private SqsClient sqsClient;
+  private DiscordMessageHandler discordMessageHandler;
+  private DiscordResponseHandler discordResponseHandler;
 
   public static void main(String[] args) {
     SqsWorkerApplication app = new SqsWorkerApplication();
@@ -44,6 +46,13 @@ public class SqsWorkerApplication {
       // Create McToWebMessageSender
       McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(),
           "sqs-redis-bridge");
+
+      // Create Discord handlers
+      this.discordMessageHandler = new DiscordMessageHandler(redisClient);
+      this.discordResponseHandler = new DiscordResponseHandler(redisClient, mcToWebSender, webToMcSender);
+
+      // Start Discord response subscription
+      discordResponseHandler.startSubscription();
 
       // Create and start SQS Worker
       this.sqsWorker = new SqsWorker(

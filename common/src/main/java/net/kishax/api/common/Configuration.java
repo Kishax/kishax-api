@@ -109,6 +109,65 @@ public class Configuration {
     return getProperty("redis.url", "redis://localhost:6379");
   }
 
+  // Discord Configuration
+  public String getDiscordToken() {
+    return getProperty("discord.token");
+  }
+
+  public String getDiscordChannelId() {
+    return getProperty("discord.channel.id");
+  }
+
+  public String getDiscordChatChannelId() {
+    return getProperty("discord.chat.channel.id");
+  }
+
+  public String getDiscordAdminChannelId() {
+    return getProperty("discord.admin.channel.id");
+  }
+
+  public String getDiscordRuleChannelId() {
+    return getProperty("discord.rule.channel.id");
+  }
+
+  public String getDiscordRuleMessageId() {
+    return getProperty("discord.rule.message.id");
+  }
+
+  public String getDiscordPresenceActivity() {
+    return getProperty("discord.presence.activity", "Kishaxサーバー");
+  }
+
+  public long getDiscordGuildId() {
+    String value = getProperty("discord.guild.id");
+    if (value == null) {
+      return 0L;
+    }
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      logger.warn("⚠️ Invalid long value for discord.guild.id: {}, using default: 0", value);
+      return 0L;
+    }
+  }
+
+  public String getBEDefaultEmojiName() {
+    return getProperty("discord.emoji.default.name", "steve");
+  }
+
+  // SQS Configuration for Discord
+  public String getSqsQueueUrl() {
+    return getProperty("aws.sqs.queue.url");
+  }
+
+  public int getSqsMaxMessages() {
+    return getIntProperty("aws.sqs.max.messages", 10);
+  }
+
+  public int getSqsWaitTimeSeconds() {
+    return getIntProperty("aws.sqs.wait.time.seconds", 20);
+  }
+
   public int getRedisConnectionTimeout() {
     return getIntProperty("redis.connectionTimeout", 5000);
   }
