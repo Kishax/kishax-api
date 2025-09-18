@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.entities.Icon;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,10 +27,10 @@ public class EmojiManager {
   private static final Logger logger = LoggerFactory.getLogger(EmojiManager.class);
 
   private final JDA jda;
-  private final Config config;
+  private final Configuration config;
   private String defaultEmojiId = null;
 
-  public EmojiManager(JDA jda, Config config) {
+  public EmojiManager(JDA jda, Configuration config) {
     this.jda = jda;
     this.config = config;
   }
@@ -156,7 +157,7 @@ public class EmojiManager {
    * ギルドを取得
    */
   private Guild getGuild() {
-    long guildId = config.getGuildId();
+    long guildId = config.getDiscordGuildId();
     if (guildId == 0) {
       logger.warn("Guild IDが設定されていません");
       return null;

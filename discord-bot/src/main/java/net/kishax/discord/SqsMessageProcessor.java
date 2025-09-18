@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 // SQS Message import - JDA Message conflicts are handled with full class names
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -26,14 +27,14 @@ public class SqsMessageProcessor {
 
   private final SqsClient sqsClient;
   private final JDA jda;
-  private final Config config;
+  private final Configuration config;
   private final ObjectMapper objectMapper;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final EmojiManager emojiManager;
   private final MessageIdManager messageIdManager;
 
-  public SqsMessageProcessor(SqsClient sqsClient, JDA jda, Config config) {
+  public SqsMessageProcessor(SqsClient sqsClient, JDA jda, Configuration config) {
     this.sqsClient = sqsClient;
     this.jda = jda;
     this.config = config;
@@ -108,8 +109,14 @@ public class SqsMessageProcessor {
   private void processMessage(software.amazon.awssdk.services.sqs.model.Message message) throws Exception {
     String body = message.body();
     logger.debug("メッセージ処理開始: {}", message.messageId());
+    processMessage(body);
+  }
 
-    JsonNode json = objectMapper.readTree(body);
+  /**
+   * メッセージ本文からJSON処理（Redis経由でも使用）
+   */
+  public void processMessage(String messageBody) throws Exception {
+    JsonNode json = objectMapper.readTree(messageBody);
     String messageType = json.path("type").asText();
 
     switch (messageType) {

@@ -3,10 +3,9 @@ package net.kishax.discord;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sqs.SqsClient;
 
 /**
  * Discord Bot メインクラス
@@ -16,9 +15,9 @@ public class DiscordBotMain {
   private static final Logger logger = LoggerFactory.getLogger(DiscordBotMain.class);
 
   private JDA jda;
-  private SqsClient sqsClient;
-  private Config config;
+  private Configuration config;
   private SqsMessageProcessor sqsProcessor;
+  private RedisMessageProcessor redisProcessor;
 
   public static void main(String[] args) {
     new DiscordBotMain().start();
@@ -29,19 +28,24 @@ public class DiscordBotMain {
       logger.info("Discord Bot を起動しています...");
 
       // 設定読み込み
-      config = new Config();
-
-      // SQSクライアント初期化
-      sqsClient = SqsClient.builder()
-          .region(Region.of(config.getAwsRegion()))
-          .build();
+      config = new Configuration();
 
       // Discord Bot初期化
       initDiscordBot();
 
       // SQSメッセージプロセッサー開始
-      sqsProcessor = new SqsMessageProcessor(sqsClient, jda, config);
-      sqsProcessor.start();
+      sqsProcessor = new SqsMessageProcessor(null, jda, config);
+
+      // Redis使用モードかSQS直接使用モードかを判定
+      String redisUrl = config.getRedisUrl();
+      if (redisUrl != null && !redisUrl.isEmpty()) {
+        logger.info("Redis経由モードで起動します");
+        redisProcessor = new RedisMessageProcessor(redisUrl, sqsProcessor);
+        redisProcessor.start();
+      } else {
+        logger.info("SQS直接モードで起動します");
+        sqsProcessor.start();
+      }
 
       logger.info("Discord Bot が正常に起動しました");
 
@@ -76,6 +80,10 @@ public class DiscordBotMain {
   private void shutdown() {
     logger.info("Discord Bot をシャットダウンしています...");
 
+    if (redisProcessor != null) {
+      redisProcessor.stop();
+    }
+
     if (sqsProcessor != null) {
       sqsProcessor.stop();
     }
@@ -84,9 +92,6 @@ public class DiscordBotMain {
       jda.shutdown();
     }
 
-    if (sqsClient != null) {
-      sqsClient.close();
-    }
 
     logger.info("Discord Bot がシャットダウンしました");
   }

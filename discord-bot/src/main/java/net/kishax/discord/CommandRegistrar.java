@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,7 +14,7 @@ import org.slf4j.LoggerFactory;
 public class CommandRegistrar {
   private static final Logger logger = LoggerFactory.getLogger(CommandRegistrar.class);
 
-  public static void registerCommands(JDA jda, Config config) {
+  public static void registerCommands(JDA jda, Configuration config) {
     try {
       // kishaxコマンドの登録
       jda.upsertCommand(

@@ -5,6 +5,7 @@ import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEve
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,9 +16,9 @@ import org.slf4j.LoggerFactory;
 public class DiscordEventListener extends ListenerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(DiscordEventListener.class);
 
-  private final Config config;
+  private final Configuration config;
 
-  public DiscordEventListener(Config config) {
+  public DiscordEventListener(Configuration config) {
     this.config = config;
   }
 
