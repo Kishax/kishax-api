@@ -24,7 +24,7 @@ public class DiscordEventListener extends ListenerAdapter {
 
   @Override
   public void onReady(ReadyEvent event) {
-    logger.info("Discord Bot が準備完了: {}", event.getJDA().getSelfUser().getAsTag());
+    logger.info("Discord Bot が準備完了: {}", event.getJDA().getSelfUser().getName());
 
     // プレゼンス設定
     event.getJDA().getPresence().setActivity(
@@ -91,7 +91,7 @@ public class DiscordEventListener extends ListenerAdapter {
   private void handleRequestApproval(ButtonInteractionEvent event) {
     // リクエスト承認の処理
     event.reply("リクエストを承認しました").setEphemeral(true).queue();
-    logger.info("リクエスト承認: ユーザー={}", event.getUser().getAsTag());
+    logger.info("リクエスト承認: ユーザー={}", event.getUser().getName());
 
     // TODO: 実際の承認処理を実装
   }
@@ -99,7 +99,7 @@ public class DiscordEventListener extends ListenerAdapter {
   private void handleRequestReject(ButtonInteractionEvent event) {
     // リクエスト拒否の処理
     event.reply("リクエストを拒否しました").setEphemeral(true).queue();
-    logger.info("リクエスト拒否: ユーザー={}", event.getUser().getAsTag());
+    logger.info("リクエスト拒否: ユーザー={}", event.getUser().getName());
 
     // TODO: 実際の拒否処理を実装
   }

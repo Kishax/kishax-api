@@ -341,7 +341,7 @@ public class SqsMessageProcessor {
 
   private void processWebhookMessage(JsonNode json) {
     String userName = json.path("userName").asText();
-    String avatarUrl = json.path("avatarUrl").asText();
+    // String avatarUrl = json.path("avatarUrl").asText();
     String content = json.path("content").asText();
 
     // Webhookの実装はDiscordEventListenerで処理されるため、ここでは基本的な送信のみ
