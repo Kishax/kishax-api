@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.kishax.api</groupId>
   <artifactId>kishax-api-parent</artifactId>
-  <version>1.0.5</version>
+  <version>1.0.6</version>
   <packaging>pom</packaging>
   <name>Kishax API Parent</name>
   <description>Parent POM for Kishax API modules</description>

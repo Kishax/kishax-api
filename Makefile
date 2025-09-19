@@ -12,7 +12,7 @@ RESET := \033[0m
 
 # Project metadata
 PROJECT_NAME := kishax-api
-VERSION := 1.0.5
+VERSION := 1.0.6
 
 .PHONY: help test-local test-prod publish build-no-tests lint security-scan
 
