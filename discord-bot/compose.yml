@@ -45,7 +45,7 @@ services:
       AWS_SQS_WAIT_TIME_SECONDS: ${AWS_SQS_WAIT_TIME_SECONDS:20}
 
       # Queue Mode Configuration
-      QUEUE_MODE: ${QUEUE_MODE:MC}
+      QUEUE_MODE: ${QUEUE_MODE:DISCORD}
 
       # SQS Worker Configuration
       SQS_WORKER_ENABLED: ${SQS_WORKER_ENABLED:false}
