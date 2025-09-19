@@ -108,7 +108,6 @@ public class Configuration {
     return getProperty("to.discord.queue.url");
   }
 
-
   // Redis Configuration
   public String getRedisUrl() {
     return getProperty("redis.url", "redis://localhost:6379");
