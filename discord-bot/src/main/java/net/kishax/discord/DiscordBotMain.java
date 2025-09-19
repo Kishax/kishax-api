@@ -92,7 +92,6 @@ public class DiscordBotMain {
       jda.shutdown();
     }
 
-
     logger.info("Discord Bot がシャットダウンしました");
   }
 }

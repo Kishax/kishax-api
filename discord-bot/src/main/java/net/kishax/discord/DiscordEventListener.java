@@ -88,7 +88,6 @@ public class DiscordEventListener extends ListenerAdapter {
     logger.info("画像マップキュー追加: URL={}, Title={}, Comment={}", url, title, comment);
   }
 
-
   private void handleRequestApproval(ButtonInteractionEvent event) {
     // リクエスト承認の処理
     event.reply("リクエストを承認しました").setEphemeral(true).queue();
