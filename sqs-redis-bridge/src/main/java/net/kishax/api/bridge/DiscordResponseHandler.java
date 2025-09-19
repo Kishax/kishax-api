@@ -24,8 +24,8 @@ public class DiscordResponseHandler {
   private final ObjectMapper objectMapper;
 
   public DiscordResponseHandler(RedisClient redisClient,
-                                McToWebMessageSender mcToWebSender,
-                                WebToMcMessageSender webToMcSender) {
+      McToWebMessageSender mcToWebSender,
+      WebToMcMessageSender webToMcSender) {
     this.redisClient = redisClient;
     this.mcToWebSender = mcToWebSender;
     this.webToMcSender = webToMcSender;

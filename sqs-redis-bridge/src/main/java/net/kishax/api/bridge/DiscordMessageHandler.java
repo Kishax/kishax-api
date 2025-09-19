@@ -59,14 +59,15 @@ public class DiscordMessageHandler {
   private boolean isDiscordMessage(String messageType) {
     return switch (messageType) {
       case "server_status",
-           "player_request",
-           "broadcast",
-           "embed",
-           "player_event",
-           "webhook",
-           "bot_message",
-           "send_message",
-           "edit_message" -> true;
+          "player_request",
+          "broadcast",
+          "embed",
+          "player_event",
+          "webhook",
+          "bot_message",
+          "send_message",
+          "edit_message" ->
+        true;
       default -> false;
     };
   }
