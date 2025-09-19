@@ -1,5 +1,5 @@
 # Discord Bot Dockerfile
-FROM openjdk:17-jdk-slim
+FROM openjdk:21-jdk-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
