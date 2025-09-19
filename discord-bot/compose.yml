@@ -27,7 +27,7 @@ services:
       TO_DISCORD_QUEUE_URL: ${TO_DISCORD_QUEUE_URL}
 
       # Redis Configuration
-    REDIS_URL: ${REDIS_URL:redis://host.docker.internal:6379}
+      REDIS_URL: ${REDIS_URL:redis://host.docker.internal:6379}
       REDIS_CONNECTION_TIMEOUT: ${REDIS_CONNECTION_TIMEOUT:5000}
       REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:3000}
 
@@ -65,4 +65,3 @@ services:
 networks:
   discord-network:
     driver: bridge
-
