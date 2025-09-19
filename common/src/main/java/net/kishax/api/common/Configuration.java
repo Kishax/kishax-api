@@ -96,13 +96,18 @@ public class Configuration {
     return getProperty("mc.web.sqs.secret.access.key");
   }
 
-  public String getMcToWebQueueUrl() {
-    return getProperty("mc.to.web.queue.url");
+  public String getToWebQueueUrl() {
+    return getProperty("to.web.queue.url");
   }
 
-  public String getWebToMcQueueUrl() {
-    return getProperty("web.to.mc.queue.url");
+  public String getToMcQueueUrl() {
+    return getProperty("to.mc.queue.url");
   }
+
+  public String getToDiscordQueueUrl() {
+    return getProperty("to.discord.queue.url");
+  }
+
 
   // Redis Configuration
   public String getRedisUrl() {
@@ -157,7 +162,7 @@ public class Configuration {
 
   // SQS Configuration for Discord
   public String getSqsQueueUrl() {
-    return getProperty("aws.sqs.queue.url");
+    return getToDiscordQueueUrl(); // Use new naming
   }
 
   public int getSqsMaxMessages() {
@@ -246,44 +251,44 @@ public class Configuration {
 
   /**
    * Get the appropriate queue URL based on QUEUE_MODE
-   * MC mode: polls from webToMcQueue
-   * WEB mode: polls from mcToWebQueue
-   * DISCORD mode: polls from dedicated Discord queue
+   * MC mode: polls from toMcQueue
+   * WEB mode: polls from toWebQueue
+   * DISCORD mode: polls from toDiscordQueue
    */
   public String getPollingQueueUrl() {
     String queueMode = getQueueMode();
     switch (queueMode) {
       case "MC":
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
       case "WEB":
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
       case "DISCORD":
-        return getSqsQueueUrl(); // Discord-specific queue
+        return getToDiscordQueueUrl();
       default:
         logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
     }
   }
 
   /**
    * Get the appropriate sending queue URL based on QUEUE_MODE
-   * MC mode: sends to mcToWebQueue
-   * WEB mode: sends to webToMcQueue
+   * MC mode: sends to toWebQueue
+   * WEB mode: sends to toMcQueue
    * DISCORD mode: sends responses back to original source queues
    */
   public String getSendingQueueUrl() {
     String queueMode = getQueueMode();
     switch (queueMode) {
       case "MC":
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
       case "WEB":
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
       case "DISCORD":
         // Discord doesn't send to SQS directly, uses Redis pub/sub instead
         return null;
       default:
         logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
     }
   }
 

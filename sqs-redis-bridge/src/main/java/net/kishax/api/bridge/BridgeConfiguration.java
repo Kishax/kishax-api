@@ -19,11 +19,11 @@ public class BridgeConfiguration extends Configuration {
     if (getAwsSecretAccessKey() == null || getAwsSecretAccessKey().trim().isEmpty()) {
       errors.append("AWS Secret Access Key is required\n");
     }
-    if (getMcToWebQueueUrl() == null || getMcToWebQueueUrl().trim().isEmpty()) {
-      errors.append("MC to Web Queue URL is required\n");
+    if (getToWebQueueUrl() == null || getToWebQueueUrl().trim().isEmpty()) {
+      errors.append("To Web Queue URL is required\n");
     }
-    if (getWebToMcQueueUrl() == null || getWebToMcQueueUrl().trim().isEmpty()) {
-      errors.append("Web to MC Queue URL is required\n");
+    if (getToMcQueueUrl() == null || getToMcQueueUrl().trim().isEmpty()) {
+      errors.append("To MC Queue URL is required\n");
     }
 
     // Redis configuration

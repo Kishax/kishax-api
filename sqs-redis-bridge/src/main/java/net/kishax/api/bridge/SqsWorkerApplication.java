@@ -40,10 +40,10 @@ public class SqsWorkerApplication {
       this.redisClient = new RedisClient(config.getRedisUrl());
 
       // Create WebToMcMessageSender
-      WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getWebToMcQueueUrl());
+      WebToMcMessageSender webToMcSender = new WebToMcMessageSender(sqsClient, config.getToMcQueueUrl());
 
       // Create McToWebMessageSender
-      McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getMcToWebQueueUrl(),
+      McToWebMessageSender mcToWebSender = new McToWebMessageSender(sqsClient, config.getToWebQueueUrl(),
           "sqs-redis-bridge");
 
       // Create Discord handlers

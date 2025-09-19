@@ -80,8 +80,8 @@ The project uses a single `.env` file for both local and production environments
 | `AWS_REGION` | AWS region | Yes |
 | `MC_WEB_SQS_ACCESS_KEY_ID` | AWS access key ID | Yes (prod) |
 | `MC_WEB_SQS_SECRET_ACCESS_KEY` | AWS secret key | Yes (prod) |
-| `MC_TO_WEB_QUEUE_URL` | MC→Web SQS queue URL | Yes |
-| `WEB_TO_MC_QUEUE_URL` | Web→MC SQS queue URL | Yes |
+| `TO_WEB_QUEUE_URL` | TO Web SQS queue URL | Yes |
+| `TO_MC_QUEUE_URL` | TO MC SQS queue URL | Yes |
 
 #### Redis Configuration
 | Variable | Description | Default |
