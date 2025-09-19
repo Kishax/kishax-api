@@ -60,7 +60,7 @@ java -jar build/libs/discord-bot-1.0.0.jar
 docker build -t kishax-discord-bot .
 
 # コンテナ実行
-docker run -e DISCORD_TOKEN="..." -e SQS_QUEUE_URL="..." kishax-discord-bot
+docker run -e DISCORD_TOKEN="..." -e TO_DISCORD_QUEUE_URL="..." kishax-discord-bot
 
 # テスト実行
 ./gradlew test
