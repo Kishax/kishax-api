@@ -4,6 +4,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
 import net.dv8tion.jda.api.entities.Icon;
+import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,10 +27,10 @@ public class EmojiManager {
   private static final Logger logger = LoggerFactory.getLogger(EmojiManager.class);
 
   private final JDA jda;
-  private final Config config;
+  private final Configuration config;
   private String defaultEmojiId = null;
 
-  public EmojiManager(JDA jda, Config config) {
+  public EmojiManager(JDA jda, Configuration config) {
     this.jda = jda;
     this.config = config;
   }
@@ -46,7 +47,7 @@ public class EmojiManager {
     return createOrGetEmojiId(defaultEmojiName)
         .thenAccept(id -> this.defaultEmojiId = id)
         .exceptionally(ex -> {
-          logger.error("デフォルト絵文字IDの更新に失敗しました", ex);
+          logger.error("Failed to update default emoji id", ex);
           return null;
         });
   }
@@ -110,7 +111,17 @@ public class EmojiManager {
       return CompletableFuture.completedFuture(null);
     }
 
-    return downloadAndCreateEmoji(guild, emojiName, imageUrl);
+    // test-uuidや無効なUUIDの場合は、画像ダウンロードに失敗する可能性が高いので
+    // ダウンロードを試行して失敗した場合はデフォルト絵文字を返す
+    return downloadAndCreateEmoji(guild, emojiName, imageUrl)
+        .thenCompose(emojiId -> {
+          if (emojiId == null) {
+            // ダウンロードに失敗した場合はデフォルト絵文字を使用
+            logger.warn("Failed to create emoji for {}, using default emoji instead", emojiName);
+            return createOrGetEmojiId(config.getBEDefaultEmojiName());
+          }
+          return CompletableFuture.completedFuture(emojiId);
+        });
   }
 
   /**
@@ -156,15 +167,15 @@ public class EmojiManager {
    * ギルドを取得
    */
   private Guild getGuild() {
-    long guildId = config.getGuildId();
+    long guildId = config.getDiscordGuildId();
     if (guildId == 0) {
-      logger.warn("Guild IDが設定されていません");
+      logger.warn("No Guild ID at config");
       return null;
     }
 
     Guild guild = jda.getGuildById(guildId);
     if (guild == null) {
-      logger.warn("指定されたGuild IDのギルドが見つかりません: {}", guildId);
+      logger.warn("Couldn't find any guilds from your specific guild id: {}", guildId);
     }
     return guild;
   }
@@ -180,7 +191,7 @@ public class EmojiManager {
 
         BufferedImage bufferedImage = ImageIO.read(url);
         if (bufferedImage == null) {
-          logger.error("画像の読み込みに失敗しました: {}", imageUrl);
+          logger.error("Failed to read image: {}", imageUrl);
           return null;
         }
 
@@ -191,17 +202,17 @@ public class EmojiManager {
         return guild.createEmoji(emojiName, Icon.from(imageBytes))
             .submit()
             .thenApply(emoji -> {
-              logger.info("絵文字を作成しました: {}", emojiName);
+              logger.info("Emoji is created: {}", emojiName);
               return emoji.getId();
             })
             .exceptionally(ex -> {
-              logger.error("絵文字の作成に失敗しました: {}", emojiName, ex);
+              logger.error("Failed to create emoji: {}", emojiName, ex);
               return null;
             })
             .join();
 
       } catch (Exception e) {
-        logger.error("画像のダウンロードに失敗しました: {}", imageUrl, e);
+        logger.error("Failed to download the image: {}", imageUrl, e);
         return null;
       }
     });

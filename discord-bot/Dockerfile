@@ -1,5 +1,5 @@
 # Discord Bot Dockerfile
-FROM openjdk:17-jdk-slim
+FROM openjdk:21-jdk-slim
 
 # 作業ディレクトリを設定
 WORKDIR /app
@@ -9,20 +9,16 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Gradleビルド用にソースをコピー
-COPY build.gradle .
-COPY src ./src
+COPY . .
 
-# Gradle Wrapperをコピー
-COPY gradle ./gradle
-COPY gradlew .
-COPY settings.gradle* ./
-
-# 実行可能権限を付与
-RUN chmod +x ./gradlew
-
-# 依存関係をダウンロードしてビルド
-RUN ./gradlew build --no-daemon
+# Build the Kishax plugins
+RUN if [ ! -f build/libs/discord-bot-*.jar ]; then \
+      echo "JAR not found, building from source..."; \
+      chmod +x ./gradlew && \
+      ./gradlew build --no-daemon; \
+    else \
+      echo "discord-bot plugins already built, skipping build step"; \
+    fi
 
 # ログディレクトリを作成
 RUN mkdir -p /app/logs

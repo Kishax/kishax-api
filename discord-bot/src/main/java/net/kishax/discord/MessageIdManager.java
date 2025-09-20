@@ -24,7 +24,7 @@ public class MessageIdManager {
   public void putPlayerMessageId(String uuid, String messageId) {
     if (uuid != null && messageId != null) {
       playerMessageIds.put(uuid, messageId);
-      logger.debug("プレイヤーメッセージIDを保存: {} -> {}", uuid, messageId);
+      logger.debug("Player message id is saved: {} -> {}", uuid, messageId);
     }
   }
 
@@ -47,7 +47,7 @@ public class MessageIdManager {
     }
     String messageId = playerMessageIds.remove(uuid);
     if (messageId != null) {
-      logger.debug("プレイヤーメッセージIDを削除: {} -> {}", uuid, messageId);
+      logger.debug("Deleted player message id: {} -> {}", uuid, messageId);
     }
     return messageId;
   }
@@ -57,7 +57,7 @@ public class MessageIdManager {
    */
   public void setChatMessageId(String messageId) {
     this.chatMessageId = messageId;
-    logger.debug("チャットメッセージIDを設定: {}", messageId);
+    logger.debug("Set chat message id: {}", messageId);
   }
 
   /**
@@ -71,7 +71,7 @@ public class MessageIdManager {
    * チャットメッセージIDをクリア
    */
   public void clearChatMessageId() {
-    logger.debug("チャットメッセージIDをクリア: {}", chatMessageId);
+    logger.debug("Be clear chat message id: {}", chatMessageId);
     this.chatMessageId = null;
   }
 
@@ -81,7 +81,7 @@ public class MessageIdManager {
   public void clear() {
     playerMessageIds.clear();
     chatMessageId = null;
-    logger.info("全メッセージIDをクリアしました");
+    logger.info("All message ids are being clear");
   }
 
   /**
