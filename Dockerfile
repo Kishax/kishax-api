@@ -6,19 +6,16 @@ RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 # Set working directory
 WORKDIR /app
 
-# Copy parent POM and module POMs
-COPY pom.xml .
-COPY common/pom.xml ./common/
-COPY sqs-redis-bridge/pom.xml ./sqs-redis-bridge/
-COPY mc-auth/pom.xml ./mc-auth/
+# Copy source code
+COPY . .
 
-# Copy source files
-COPY common/src ./common/src
-COPY sqs-redis-bridge/src ./sqs-redis-bridge/src
-COPY mc-auth/src ./mc-auth/src
-
-# Build all modules
-RUN mvn clean package -DskipTests
+# Build the Kishax plugins only if JARs don't exist
+RUN if [ ! -f mc-auth/target/mc-auth-*-with-dependencies.jar ] || [ ! -f sqs-redis-bridge/target/sqs-redis-bridge-*-with-dependencies.jar ]; then \
+        echo "JARs not found, building from source..."; \
+        mvn clean package -DskipTests; \
+    else \
+        echo "JARs already exist, skipping build step"; \
+    fi
 
 # Runtime stage
 FROM eclipse-temurin:21-jre

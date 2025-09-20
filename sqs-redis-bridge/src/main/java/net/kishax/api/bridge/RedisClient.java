@@ -39,9 +39,18 @@ public class RedisClient {
 
   private void ensureConnection() {
     if (connection == null) {
-      connection = lettuceClient.connect();
-      syncCommands = connection.sync();
-      logger.info("✅ Redis connection established successfully");
+      try {
+        logger.debug("🔗 Attempting Redis connection to: {}", lettuceClient.getOptions().toString());
+        connection = lettuceClient.connect();
+        syncCommands = connection.sync();
+
+        // Test the connection with a ping
+        String pongResponse = syncCommands.ping();
+        logger.debug("✅ Redis connection established successfully. Ping response: {}", pongResponse);
+      } catch (Exception e) {
+        logger.error("❌ Failed to establish Redis connection: {}", e.getMessage(), e);
+        throw e;
+      }
     }
   }
 
@@ -124,8 +133,8 @@ public class RedisClient {
     try {
       ensureConnection();
       String jsonMessage = objectMapper.writeValueAsString(message);
-      syncCommands.publish(channel, jsonMessage);
-      logger.debug("📡 Published to Redis channel {}: {}", channel, jsonMessage);
+      long subscriberCount = syncCommands.publish(channel, jsonMessage);
+      logger.debug("📡 Published to Redis channel {} (subscribers: {}): {}", channel, subscriberCount, jsonMessage);
     } catch (Exception e) {
       logger.error("❌ Error publishing to Redis channel: {}", e.getMessage(), e);
       throw new RuntimeException("Failed to publish to Redis channel", e);

@@ -59,9 +59,10 @@ services:
       - AWS_SECRET_ACCESS_KEY=test
       # Redis configuration
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      # Application configuration
-      - MC_TO_WEB_QUEUE_URL=http://localstack:4566/000000000000/mc-web-queue
-      - WEB_TO_MC_QUEUE_URL=http://localstack:4566/000000000000/web-mc-queue
+      # Application configuration (New naming)
+      - TO_WEB_QUEUE_URL=http://localstack:4566/000000000000/to-web-queue
+      - TO_MC_QUEUE_URL=http://localstack:4566/000000000000/to-mc-queue
+      - TO_DISCORD_QUEUE_URL=http://localstack:4566/000000000000/to-discord-queue
       - MC_WEB_SQS_ACCESS_KEY_ID=test
       - MC_WEB_SQS_SECRET_ACCESS_KEY=test
       - LOG_LEVEL=DEBUG
@@ -85,8 +86,9 @@ services:
       - AWS_REGION=${AWS_REGION:-ap-northeast-1}
       - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
       - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
-      - MC_TO_WEB_QUEUE_URL=${MC_TO_WEB_QUEUE_URL}
-      - WEB_TO_MC_QUEUE_URL=${WEB_TO_MC_QUEUE_URL}
+      - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
+      - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
+      - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
       # Redis Configuration
       - REDIS_URL=${REDIS_URL:-redis://host.docker.internal:6379}
       - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}

@@ -96,17 +96,80 @@ public class Configuration {
     return getProperty("mc.web.sqs.secret.access.key");
   }
 
-  public String getMcToWebQueueUrl() {
-    return getProperty("mc.to.web.queue.url");
+  public String getToWebQueueUrl() {
+    return getProperty("to.web.queue.url");
   }
 
-  public String getWebToMcQueueUrl() {
-    return getProperty("web.to.mc.queue.url");
+  public String getToMcQueueUrl() {
+    return getProperty("to.mc.queue.url");
+  }
+
+  public String getToDiscordQueueUrl() {
+    return getProperty("to.discord.queue.url");
   }
 
   // Redis Configuration
   public String getRedisUrl() {
     return getProperty("redis.url", "redis://localhost:6379");
+  }
+
+  // Discord Configuration
+  public String getDiscordToken() {
+    return getProperty("discord.token");
+  }
+
+  public String getDiscordChannelId() {
+    return getProperty("discord.channel.id");
+  }
+
+  public String getDiscordChatChannelId() {
+    return getProperty("discord.chat.channel.id");
+  }
+
+  public String getDiscordAdminChannelId() {
+    return getProperty("discord.admin.channel.id");
+  }
+
+  public String getDiscordRuleChannelId() {
+    return getProperty("discord.rule.channel.id");
+  }
+
+  public String getDiscordRuleMessageId() {
+    return getProperty("discord.rule.message.id");
+  }
+
+  public String getDiscordPresenceActivity() {
+    return getProperty("discord.presence.activity", "Kishaxサーバー");
+  }
+
+  public long getDiscordGuildId() {
+    String value = getProperty("discord.guild.id");
+    if (value == null) {
+      return 0L;
+    }
+    try {
+      return Long.parseLong(value);
+    } catch (NumberFormatException e) {
+      logger.warn("⚠️ Invalid long value for discord.guild.id: {}, using default: 0", value);
+      return 0L;
+    }
+  }
+
+  public String getBEDefaultEmojiName() {
+    return getProperty("discord.emoji.default.name", "steve");
+  }
+
+  // SQS Configuration for Discord
+  public String getSqsQueueUrl() {
+    return getToDiscordQueueUrl(); // Use new naming
+  }
+
+  public int getSqsMaxMessages() {
+    return getIntProperty("aws.sqs.max.messages", 10);
+  }
+
+  public int getSqsWaitTimeSeconds() {
+    return getIntProperty("aws.sqs.wait.time.seconds", 20);
   }
 
   public int getRedisConnectionTimeout() {
@@ -187,37 +250,44 @@ public class Configuration {
 
   /**
    * Get the appropriate queue URL based on QUEUE_MODE
-   * MC mode: polls from webToMcQueue
-   * WEB mode: polls from mcToWebQueue
+   * MC mode: polls from toMcQueue
+   * WEB mode: polls from toWebQueue
+   * DISCORD mode: polls from toDiscordQueue
    */
   public String getPollingQueueUrl() {
     String queueMode = getQueueMode();
     switch (queueMode) {
       case "MC":
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
       case "WEB":
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
+      case "DISCORD":
+        return getToDiscordQueueUrl();
       default:
         logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
     }
   }
 
   /**
    * Get the appropriate sending queue URL based on QUEUE_MODE
-   * MC mode: sends to mcToWebQueue
-   * WEB mode: sends to webToMcQueue
+   * MC mode: sends to toWebQueue
+   * WEB mode: sends to toMcQueue
+   * DISCORD mode: sends responses back to original source queues
    */
   public String getSendingQueueUrl() {
     String queueMode = getQueueMode();
     switch (queueMode) {
       case "MC":
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
       case "WEB":
-        return getWebToMcQueueUrl();
+        return getToMcQueueUrl();
+      case "DISCORD":
+        // Discord doesn't send to SQS directly, uses Redis pub/sub instead
+        return null;
       default:
         logger.warn("⚠️ Unknown QUEUE_MODE: {}, defaulting to MC mode", queueMode);
-        return getMcToWebQueueUrl();
+        return getToWebQueueUrl();
     }
   }
 

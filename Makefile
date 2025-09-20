@@ -12,9 +12,9 @@ RESET := \033[0m
 
 # Project metadata
 PROJECT_NAME := kishax-api
-VERSION := 1.0.5
+VERSION := 1.0.7
 
-.PHONY: help test-local test-prod publish build-no-tests lint security-scan
+.PHONY: help test-local test-prod publish install-no-tests lint security-scan
 
 help: ## Show this help message
 	@echo "$(BOLD)Kishax API Multi-Module Project$(RESET)"
@@ -54,7 +54,7 @@ test-prod: ## Run real AWS integration tests (production)
 # Build Commands
 # =============================================================================
 
-build-no-tests: ## Build all modules without running tests
+install-no-tests: ## Build all modules without running tests
 	@echo "$(BLUE)🔨 Building all modules (skipping tests)...$(RESET)"
 	mvn clean install -DskipTests
 	@echo "$(GREEN)✅ Build successful (tests skipped)!$(RESET)"

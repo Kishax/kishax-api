@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.kishax.api</groupId>
   <artifactId>mc-auth</artifactId>
-  <version>1.0.5</version>
+  <version>1.0.7</version>
   <packaging>jar</packaging>
   <name>Kishax API MC Authentication</name>
   <description>Minecraft authentication API for Kishax infrastructure</description>
@@ -27,12 +27,12 @@
     <dependency>
       <groupId>net.kishax.api</groupId>
       <artifactId>common</artifactId>
-      <version>1.0.5</version>
+      <version>1.0.7</version>
     </dependency>
     <dependency>
       <groupId>net.kishax.api</groupId>
       <artifactId>sqs-redis-bridge</artifactId>
-      <version>1.0.5</version>
+      <version>1.0.7</version>
     </dependency>
     <!-- HTTP Server (Javalin) -->
     <dependency>

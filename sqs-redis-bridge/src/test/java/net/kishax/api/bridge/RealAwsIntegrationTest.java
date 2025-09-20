@@ -52,17 +52,17 @@ class RealAwsIntegrationTest {
     configuration = new Configuration();
 
     // Validate required configuration
-    assertNotNull(configuration.getMcToWebQueueUrl(),
-        "MC_WEB_SQS_QUEUE_URL must be set for real AWS tests");
+    assertNotNull(configuration.getToWebQueueUrl(),
+        "TO_WEB_QUEUE_URL must be set for real AWS tests");
 
     // For Web→MC queue, get from environment directly
-    String webMcQueueFromEnv = System.getenv("WEB_MC_SQS_QUEUE_URL");
-    assertNotNull(webMcQueueFromEnv, "WEB_MC_SQS_QUEUE_URL must be set for real AWS tests");
+    String webMcQueueFromEnv = System.getenv("TO_MC_QUEUE_URL");
+    assertNotNull(webMcQueueFromEnv, "TO_MC_QUEUE_URL must be set for real AWS tests");
     assertNotNull(configuration.getRedisUrl(),
         "REDIS_URL must be set for real AWS tests");
 
-    mcWebQueueUrl = configuration.getMcToWebQueueUrl();
-    webMcQueueUrl = System.getenv("WEB_MC_SQS_QUEUE_URL");
+    mcWebQueueUrl = configuration.getToWebQueueUrl();
+    webMcQueueUrl = System.getenv("TO_MC_QUEUE_URL");
 
     // Create clients using real AWS configuration
     sqsClient = configuration.createSqsClient();
