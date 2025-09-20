@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 
 # Build the Kishax plugins
-RUN if [ ! -f "build/libs/discord-bot-1.0.0.jar" ]; then \
+RUN if [ ! -f build/libs/discord-bot-*.jar ]; then \
+      echo "JAR not found, building from source..."; \
       chmod +x ./gradlew && \
       ./gradlew build --no-daemon; \
     else \
