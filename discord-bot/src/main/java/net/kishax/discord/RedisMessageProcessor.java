@@ -100,34 +100,50 @@ public class RedisMessageProcessor {
    */
   private void handleRedisMessage(String messageJson) {
     try {
-      JsonNode requestNode = objectMapper.readTree(messageJson);
-      String type = requestNode.path("type").asText();
-      String action = requestNode.path("action").asText();
-      JsonNode data = requestNode.path("data");
+      logger.debug("📜 Row response json: {}", messageJson);
 
-      logger.debug("Redisメッセージを受信しました: {}", action);
+      JsonNode requestNode = objectMapper.readTree(messageJson);
+      if (requestNode.isTextual()) {
+        requestNode = objectMapper.readTree(requestNode.asText());
+      }
+
+      // 詳細デバッグ: フィールド取得の問題を調査
+      JsonNode typeNode = requestNode.path("type");
+      JsonNode actionNode = requestNode.path("action");
+      // JsonNode sourceNode = requestNode.path("source");
+      JsonNode dataNode = requestNode.path("data");
+
+      String type = typeNode.asText();
+      String action = actionNode.asText();
+      JsonNode data = dataNode;
 
       if ("discord_action".equals(type)) {
+        logger.debug("🎮 Starting process of discord message for action: {}", action);
+
         // 既存のSqsMessageProcessorに処理を委譲
         String originalMessage = objectMapper.writeValueAsString(data);
+        logger.debug("🔄 Returning response with SqsMessageProcessor: {}", originalMessage);
 
+        final JsonNode finalRequestNode = requestNode;
         CompletableFuture.runAsync(() -> {
           try {
             sqsMessageProcessor.processMessage(originalMessage);
 
             // 成功応答を送信
-            sendSuccessResponse(action, requestNode.path("source").asText());
+            sendSuccessResponse(action, finalRequestNode.path("source").asText());
           } catch (Exception e) {
-            logger.error("Discord処理でエラーが発生しました: {}", action, e);
+            logger.error("An error occurred while processing discord: {}", action, e);
 
             // エラー応答を送信
-            sendErrorResponse(action, e.getMessage(), requestNode.path("source").asText());
+            sendErrorResponse(action, e.getMessage(), finalRequestNode.path("source").asText());
           }
         }, executorService);
+      } else {
+        logger.warn("⚠️ Unsupported message type: type={}, action={}", type, action);
       }
 
     } catch (Exception e) {
-      logger.error("Redisメッセージ処理でエラーが発生しました", e);
+      logger.error("An error occurred while processing redis message", e);
     }
   }
 
