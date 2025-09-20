@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
 
 /**
  * SQS Worker for processing messages from MC to Web
@@ -24,6 +25,7 @@ public class SqsWorker {
 
   private final SqsClient sqsClient;
   private final String queueUrl;
+  private final List<String> additionalQueueUrls;
   private final String queueMode;
   private final ObjectMapper objectMapper;
   private final RedisClient redisClient;
@@ -80,6 +82,18 @@ public class SqsWorker {
     this.configuration = configuration;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
+
+    // Initialize additional queue URLs for WEB mode
+    this.additionalQueueUrls = new ArrayList<>();
+    if ("WEB".equalsIgnoreCase(queueMode)) {
+      // WEB mode also monitors DISCORD queue for Discord messages from MC
+      String discordQueueUrl = configuration.getToDiscordQueueUrl();
+      if (discordQueueUrl != null && !discordQueueUrl.trim().isEmpty()) {
+        this.additionalQueueUrls.add(discordQueueUrl);
+        logger.info("🔔 WEB mode will also monitor DISCORD queue: {}", discordQueueUrl);
+      }
+    }
+
     this.executor = Executors.newSingleThreadScheduledExecutor(r -> {
       Thread t = new Thread(r, "SQS-Worker");
       t.setDaemon(true);
@@ -183,6 +197,35 @@ public class SqsWorker {
 
     try {
       System.out.println("SQS Worker: Polling for messages...");
+
+      // Poll from primary queue
+      List<Message> primaryMessages = pollFromQueue(queueUrl);
+      List<Message> allMessages = new ArrayList<>(primaryMessages);
+
+      // Poll from additional queues (e.g., DISCORD queue in WEB mode)
+      for (String additionalQueueUrl : additionalQueueUrls) {
+        List<Message> additionalMessages = pollFromQueue(additionalQueueUrl);
+        allMessages.addAll(additionalMessages);
+      }
+
+      if (!allMessages.isEmpty()) {
+        logger.info("📨 Received {} messages from SQS", allMessages.size());
+        System.out.println("SQS Worker: Received " + allMessages.size() + " messages");
+
+        for (Message message : allMessages) {
+          processMessage(message);
+        }
+      } else {
+        System.out.println("SQS Worker: No messages received");
+      }
+    } catch (Exception error) {
+      logger.error("❌ Error polling SQS messages: {}", error.getMessage(), error);
+      System.out.println("SQS Worker ERROR: " + error.getMessage());
+    }
+  }
+
+  private List<Message> pollFromQueue(String queueUrl) {
+    try {
       ReceiveMessageRequest request = ReceiveMessageRequest.builder()
           .queueUrl(queueUrl)
           .maxNumberOfMessages(configuration.getSqsWorkerMaxMessages())
@@ -192,21 +235,10 @@ public class SqsWorker {
           .build();
 
       ReceiveMessageResponse response = sqsClient.receiveMessage(request);
-      List<Message> messages = response.messages();
-
-      if (!messages.isEmpty()) {
-        logger.info("📨 Received {} messages from SQS", messages.size());
-        System.out.println("SQS Worker: Received " + messages.size() + " messages");
-
-        for (Message message : messages) {
-          processMessage(message);
-        }
-      } else {
-        System.out.println("SQS Worker: No messages received");
-      }
+      return response != null ? response.messages() : new ArrayList<>();
     } catch (Exception error) {
-      logger.error("❌ Error polling SQS messages: {}", error.getMessage(), error);
-      System.out.println("SQS Worker ERROR: " + error.getMessage());
+      logger.error("❌ Error polling from queue {}: {}", queueUrl, error.getMessage());
+      return new ArrayList<>();
     }
   }
 
@@ -264,6 +296,26 @@ public class SqsWorker {
           handleWebMcAuthConfirmMessage(messageData);
           deleteMessage(message);
           logger.info("✅ Web MC Auth Confirm message processed and deleted successfully");
+        }
+        case "player_event" -> {
+          handleDiscordPlayerEventMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Discord Player Event message processed and deleted successfully");
+        }
+        case "server_status" -> {
+          handleDiscordServerStatusMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Discord Server Status message processed and deleted successfully");
+        }
+        case "embed" -> {
+          handleDiscordEmbedMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Discord Embed message processed and deleted successfully");
+        }
+        case "broadcast" -> {
+          handleDiscordBroadcastMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Discord Broadcast message processed and deleted successfully");
         }
         default -> {
           logger.warn("! Unknown message type: {}", messageType);
@@ -677,6 +729,96 @@ public class SqsWorker {
       this.uuid = uuid;
       this.authToken = authToken;
       this.expiresAt = expiresAt;
+    }
+  }
+
+  /**
+   * Handle Discord player event message
+   */
+  private void handleDiscordPlayerEventMessage(JsonNode data) {
+    try {
+      String eventType = data.path("eventType").asText();
+      String playerName = data.path("playerName").asText();
+      String playerUuid = data.path("playerUuid").asText();
+      String serverName = data.path("serverName").asText();
+
+      logger.info("🎮 Processing Discord player event: {} for {} on {}", eventType, playerName, serverName);
+
+      // Forward to Discord via Redis pub/sub
+      String redisChannel = "discord_requests";
+      String redisMessage = data.toString();
+
+      redisClient.publish(redisChannel, redisMessage);
+      logger.info("📡 Published Discord player event to Redis channel: {}", redisChannel);
+
+    } catch (Exception error) {
+      logger.error("❌ Error processing Discord player event: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Handle Discord server status message
+   */
+  private void handleDiscordServerStatusMessage(JsonNode data) {
+    try {
+      String serverName = data.path("serverName").asText();
+      String status = data.path("status").asText();
+
+      logger.info("🔥 Processing Discord server status: {} - {}", serverName, status);
+
+      // Forward to Discord via Redis pub/sub
+      String redisChannel = "discord_requests";
+      String redisMessage = data.toString();
+
+      redisClient.publish(redisChannel, redisMessage);
+      logger.info("📡 Published Discord server status to Redis channel: {}", redisChannel);
+
+    } catch (Exception error) {
+      logger.error("❌ Error processing Discord server status: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Handle Discord embed message
+   */
+  private void handleDiscordEmbedMessage(JsonNode data) {
+    try {
+      String content = data.path("content").asText();
+      int color = data.path("color").asInt();
+
+      logger.info("💬 Processing Discord embed message: {}", content);
+
+      // Forward to Discord via Redis pub/sub
+      String redisChannel = "discord_requests";
+      String redisMessage = data.toString();
+
+      redisClient.publish(redisChannel, redisMessage);
+      logger.info("📡 Published Discord embed to Redis channel: {}", redisChannel);
+
+    } catch (Exception error) {
+      logger.error("❌ Error processing Discord embed: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Handle Discord broadcast message
+   */
+  private void handleDiscordBroadcastMessage(JsonNode data) {
+    try {
+      String content = data.path("content").asText();
+      boolean isChat = data.path("isChat").asBoolean();
+
+      logger.info("📢 Processing Discord broadcast: {} (chat: {})", content, isChat);
+
+      // Forward to Discord via Redis pub/sub
+      String redisChannel = "discord_requests";
+      String redisMessage = data.toString();
+
+      redisClient.publish(redisChannel, redisMessage);
+      logger.info("📡 Published Discord broadcast to Redis channel: {}", redisChannel);
+
+    } catch (Exception error) {
+      logger.error("❌ Error processing Discord broadcast: {}", error.getMessage(), error);
     }
   }
 
