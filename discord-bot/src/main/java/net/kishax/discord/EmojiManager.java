@@ -111,7 +111,17 @@ public class EmojiManager {
       return CompletableFuture.completedFuture(null);
     }
 
-    return downloadAndCreateEmoji(guild, emojiName, imageUrl);
+    // test-uuidや無効なUUIDの場合は、画像ダウンロードに失敗する可能性が高いので
+    // ダウンロードを試行して失敗した場合はデフォルト絵文字を返す
+    return downloadAndCreateEmoji(guild, emojiName, imageUrl)
+        .thenCompose(emojiId -> {
+          if (emojiId == null) {
+            // ダウンロードに失敗した場合はデフォルト絵文字を使用
+            logger.warn("Failed to create emoji for {}, using default emoji instead", emojiName);
+            return createOrGetEmojiId(config.getBEDefaultEmojiName());
+          }
+          return CompletableFuture.completedFuture(emojiId);
+        });
   }
 
   /**

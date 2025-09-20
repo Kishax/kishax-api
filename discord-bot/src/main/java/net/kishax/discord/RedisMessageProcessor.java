@@ -349,76 +349,146 @@ public class RedisMessageProcessor {
   }
 
   private void processPlayerJoin(String playerName, String playerUuid, String serverName) {
-    emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
-        .thenAccept(emojiId -> {
-          String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
-              + " server";
+    // test-uuidなど無効なUUIDの場合はデフォルト絵文字を使用
+    if (isInvalidUuid(playerUuid)) {
+      emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
+                + " server";
 
-          EmbedBuilder embed = new EmbedBuilder()
-              .setDescription(content)
-              .setColor(ColorUtil.GREEN.getRGB());
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.GREEN.getRGB());
 
-          TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
-          if (channel != null) {
-            channel.sendMessageEmbeds(embed.build()).queue(
-                message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
-          }
-        });
-  }
-
-  private void processPlayerLeave(String playerName, String playerUuid, String serverName) {
-    String messageId = messageIdManager.getPlayerMessageId(playerUuid);
-
-    emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
-        .thenAccept(emojiId -> {
-          String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
-              + " server";
-
-          if (messageId != null) {
-            // 既存メッセージを編集
-            TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
-            if (channel != null) {
-              EmbedBuilder embed = new EmbedBuilder()
-                  .setDescription(content)
-                  .setColor(ColorUtil.RED.getRGB());
-
-              channel.editMessageEmbedsById(messageId, embed.build()).queue();
-              messageIdManager.removePlayerMessageId(playerUuid);
-            }
-          }
-        });
-  }
-
-  private void processPlayerMove(String playerName, String playerUuid, String serverName) {
-    String messageId = messageIdManager.getPlayerMessageId(playerUuid);
-
-    emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
-        .thenAccept(emojiId -> {
-          String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
-              + " server";
-
-          EmbedBuilder embed = new EmbedBuilder()
-              .setDescription(content)
-              .setColor(ColorUtil.BLUE.getRGB());
-
-          if (messageId != null) {
-            // 既存メッセージを編集
-            TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
-            if (channel != null) {
-              channel.editMessageEmbedsById(messageId, embed.build()).queue();
-            }
-          } else {
-            // 新規メッセージ
             TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
             if (channel != null) {
               channel.sendMessageEmbeds(embed.build()).queue(
                   message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
             }
-          }
-        });
+          });
+    } else {
+      emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(playerName, emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
+                + " server";
+
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.GREEN.getRGB());
+
+            TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+            if (channel != null) {
+              channel.sendMessageEmbeds(embed.build()).queue(
+                  message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+            }
+          });
+    }
+  }
+
+  private void processPlayerLeave(String playerName, String playerUuid, String serverName) {
+    String messageId = messageIdManager.getPlayerMessageId(playerUuid);
+
+    if (isInvalidUuid(playerUuid)) {
+      emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+                + " server";
+
+            if (messageId != null) {
+              // 既存メッセージを編集
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setDescription(content)
+                    .setColor(ColorUtil.RED.getRGB());
+
+                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                messageIdManager.removePlayerMessageId(playerUuid);
+              }
+            }
+          });
+    } else {
+      emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(playerName, emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+                + " server";
+
+            if (messageId != null) {
+              // 既存メッセージを編集
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setDescription(content)
+                    .setColor(ColorUtil.RED.getRGB());
+
+                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                messageIdManager.removePlayerMessageId(playerUuid);
+              }
+            }
+          });
+    }
+  }
+
+  private void processPlayerMove(String playerName, String playerUuid, String serverName) {
+    String messageId = messageIdManager.getPlayerMessageId(playerUuid);
+
+    if (isInvalidUuid(playerUuid)) {
+      emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+                + " server";
+
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.BLUE.getRGB());
+
+            if (messageId != null) {
+              // 既存メッセージを編集
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+              }
+            } else {
+              // 新規メッセージ
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+              }
+            }
+          });
+    } else {
+      emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(playerName, emojiId);
+            String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+                + " server";
+
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.BLUE.getRGB());
+
+            if (messageId != null) {
+              // 既存メッセージを編集
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+              }
+            } else {
+              // 新規メッセージ
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+              }
+            }
+          });
+    }
   }
 
   private void processPlayerChat(JsonNode json) {
@@ -428,27 +498,68 @@ public class RedisMessageProcessor {
 
     String chatMessageId = messageIdManager.getChatMessageId();
 
-    emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
-        .thenAccept(emojiId -> {
-          String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = "<" + (emojiString != null ? emojiString : "") + playerName + "> " + chatMessage;
+    if (isInvalidUuid(playerUuid)) {
+      emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
+            String content = "<" + (emojiString != null ? emojiString : "") + playerName + "> " + chatMessage;
 
-          EmbedBuilder embed = new EmbedBuilder()
-              .setDescription(content)
-              .setColor(ColorUtil.GREEN.getRGB());
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.GREEN.getRGB());
 
-          TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
-          if (chatChannel != null) {
-            if (chatMessageId != null) {
-              // 既存チャットメッセージを編集
-              chatChannel.editMessageEmbedsById(chatMessageId, embed.build()).queue();
-            } else {
-              // 新規チャットメッセージ
-              chatChannel.sendMessageEmbeds(embed.build()).queue(
-                  message -> messageIdManager.setChatMessageId(message.getId()));
+            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
+            if (chatChannel != null) {
+              if (chatMessageId != null) {
+                // 既存チャットメッセージを編集
+                chatChannel.editMessageEmbedsById(chatMessageId, embed.build()).queue();
+              } else {
+                // 新規チャットメッセージ
+                chatChannel.sendMessageEmbeds(embed.build()).queue(
+                    message -> messageIdManager.setChatMessageId(message.getId()));
+              }
             }
-          }
-        });
+          });
+    } else {
+      emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
+          .thenAccept(emojiId -> {
+            String emojiString = emojiManager.getEmojiString(playerName, emojiId);
+            String content = "<" + (emojiString != null ? emojiString : "") + playerName + "> " + chatMessage;
+
+            EmbedBuilder embed = new EmbedBuilder()
+                .setDescription(content)
+                .setColor(ColorUtil.GREEN.getRGB());
+
+            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
+            if (chatChannel != null) {
+              if (chatMessageId != null) {
+                // 既存チャットメッセージを編集
+                chatChannel.editMessageEmbedsById(chatMessageId, embed.build()).queue();
+              } else {
+                // 新規チャットメッセージ
+                chatChannel.sendMessageEmbeds(embed.build()).queue(
+                    message -> messageIdManager.setChatMessageId(message.getId()));
+              }
+            }
+          });
+    }
+  }
+
+  /**
+   * 無効なUUIDかどうかを判定
+   */
+  private boolean isInvalidUuid(String uuid) {
+    if (uuid == null || uuid.isEmpty()) {
+      return true;
+    }
+
+    // test-uuidや明らかに無効なパターンをチェック
+    if (uuid.startsWith("test-") || uuid.equals("test-uuid-12345")) {
+      return true;
+    }
+
+    // 正規のUUID形式チェック（8-4-4-4-12文字）
+    return !uuid.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
   }
 
   /**
