@@ -29,6 +29,7 @@ public class SqsWorker {
   private final RedisClient redisClient;
   private final WebToMcMessageSender webToMcSender;
   private final McToWebMessageSender mcToWebSender;
+  private final DiscordMessageSender discordSender;
   private final Configuration configuration;
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
@@ -75,6 +76,7 @@ public class SqsWorker {
     this.redisClient = redisClient;
     this.webToMcSender = webToMcSender;
     this.mcToWebSender = mcToWebSender;
+    this.discordSender = new DiscordMessageSender(sqsClient, configuration.getToDiscordQueueUrl());
     this.configuration = configuration;
     this.objectMapper = new ObjectMapper();
     this.objectMapper.registerModule(new JavaTimeModule());
@@ -514,6 +516,13 @@ public class SqsWorker {
    */
   public McToWebMessageSender getMcToWebSender() {
     return mcToWebSender;
+  }
+
+  /**
+   * Get DiscordMessageSender for external use
+   */
+  public DiscordMessageSender getDiscordSender() {
+    return discordSender;
   }
 
   /**
