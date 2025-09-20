@@ -330,6 +330,11 @@ public class SqsWorker {
           deleteMessage(message);
           logger.info("✅ Discord Broadcast message processed and deleted successfully");
         }
+        case "discord_response" -> {
+          handleDiscordResponseMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ Discord Response message processed and deleted successfully");
+        }
         default -> {
           logger.warn("! Unknown message type: {}", messageType);
           // Still delete unknown messages to prevent them from being reprocessed
@@ -696,6 +701,27 @@ public class SqsWorker {
 
     logger.info("🎉 Processing auth completion from Redis for player: {} ({})", playerName, playerUuid);
     sendAuthCompletionToMc(playerName, playerUuid, message);
+  }
+
+  /**
+   * Handle Discord response messages
+   */
+  private void handleDiscordResponseMessage(JsonNode data) {
+    String result = data.path("result").asText();
+    String action = data.path("action").asText();
+    String errorMessage = data.path("error_message").asText("");
+    JsonNode responseData = data.path("data");
+
+    if ("success".equals(result)) {
+      logger.info("📢 Discord operation successful: {} (source: {})", action,
+          responseData.path("source").asText());
+    } else if ("error".equals(result)) {
+      logger.warn("⚠️ Discord operation failed: {} - {} (source: {})",
+          action, errorMessage, responseData.path("source").asText());
+    } else {
+      logger.info("📢 Discord response: {} with result: {} (source: {})",
+          action, result, responseData.path("source").asText());
+    }
   }
 
   /**
