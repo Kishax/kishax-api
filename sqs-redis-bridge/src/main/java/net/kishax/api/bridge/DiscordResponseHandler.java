@@ -56,7 +56,7 @@ public class DiscordResponseHandler {
       JsonNode data = responseNode.path("data");
       String originalSource = data.path("source").asText("unknown");
 
-      logger.debug("Discord応答を受信しました: {} - {}", responseType, result);
+      logger.debug("Received the response of discord: {} - {}", responseType, result);
 
       // 応答メッセージを構築
       Map<String, Object> responseMessage = new HashMap<>();
@@ -76,20 +76,21 @@ public class DiscordResponseHandler {
       if ("MC".equalsIgnoreCase(originalSource)) {
         // MC向け応答
         webToMcSender.sendGenericMessage("discord_response", responseMessage);
-        logger.debug("Discord応答をMCに送信しました");
+        logger.debug("Sent the response of discord to mc");
       } else if ("WEB".equalsIgnoreCase(originalSource)) {
         // WEB向け応答
         mcToWebSender.sendGenericMessage("discord_response", responseMessage);
-        logger.debug("Discord応答をWEBに送信しました");
+        logger.debug("Sent the response of discord to web");
       } else {
         // 不明な送信元の場合は両方に送信
         webToMcSender.sendGenericMessage("discord_response", responseMessage);
         mcToWebSender.sendGenericMessage("discord_response", responseMessage);
-        logger.debug("Discord応答を両方向に送信しました (送信元不明: {})", originalSource);
+        logger.debug("Sent the response of discord at both web and mc (Unsupported delivery point: {})",
+            originalSource);
       }
 
     } catch (Exception e) {
-      logger.error("Discord応答処理でエラーが発生しました", e);
+      logger.error("An error occurred while processing discord request/response", e);
     }
   }
 
@@ -114,9 +115,9 @@ public class DiscordResponseHandler {
         mcToWebSender.sendGenericMessage("discord_error", errorResponse);
       }
 
-      logger.warn("Discordエラー応答を送信しました: {}", errorMessage);
+      logger.warn("Sent the error response: {}", errorMessage);
     } catch (Exception e) {
-      logger.error("エラー応答送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending the error response", e);
     }
   }
 
@@ -141,9 +142,9 @@ public class DiscordResponseHandler {
         mcToWebSender.sendGenericMessage("discord_success", successResponse);
       }
 
-      logger.debug("Discord成功応答を送信しました: {}", originalType);
+      logger.debug("Sent the success response: {}", originalType);
     } catch (Exception e) {
-      logger.error("成功応答送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending the success response", e);
     }
   }
 }

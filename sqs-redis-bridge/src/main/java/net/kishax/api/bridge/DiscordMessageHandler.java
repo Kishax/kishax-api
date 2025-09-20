@@ -46,10 +46,10 @@ public class DiscordMessageHandler {
         // Redisで公開
         redisClient.publish(DISCORD_REQUESTS_CHANNEL, requestJson);
 
-        logger.info("Discord要求をRedisに送信しました: {}", messageType);
+        logger.info("Sent message to redis for discord-bot: {}", messageType);
       }
     } catch (Exception e) {
-      logger.error("Discordメッセージ処理でエラーが発生しました", e);
+      logger.error("An error occurred while processing of discord message", e);
     }
   }
 
@@ -87,7 +87,7 @@ public class DiscordMessageHandler {
 
       handleDiscordMessage(objectMapper.writeValueAsString(playerEvent));
     } catch (Exception e) {
-      logger.error("プレイヤーイベント送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending player event", e);
     }
   }
 
@@ -104,7 +104,7 @@ public class DiscordMessageHandler {
 
       handleDiscordMessage(objectMapper.writeValueAsString(serverStatus));
     } catch (Exception e) {
-      logger.error("サーバーステータス送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending server status", e);
     }
   }
 
@@ -122,7 +122,7 @@ public class DiscordMessageHandler {
 
       handleDiscordMessage(objectMapper.writeValueAsString(embedMessage));
     } catch (Exception e) {
-      logger.error("Embedメッセージ送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending embed message", e);
     }
   }
 
@@ -139,7 +139,7 @@ public class DiscordMessageHandler {
 
       handleDiscordMessage(objectMapper.writeValueAsString(broadcast));
     } catch (Exception e) {
-      logger.error("ブロードキャストメッセージ送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending broadcast message", e);
     }
   }
 }
