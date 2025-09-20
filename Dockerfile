@@ -19,11 +19,12 @@ RUN mvn dependency:go-offline -DskipTests || true
 # Copy source code
 COPY . .
 
-# Build the Kishax plugins
-RUN if [ ! -f "mc-auth/target/mc-auth-*-with-dependencies.jar" ] || [ ! -f "sqs-redis-bridge/target/sqs-redis-bridge-*-with-dependencies.jar" ]; then \
+# Build the Kishax plugins only if JARs don't exist
+RUN if [ ! -f mc-auth/target/mc-auth-*-with-dependencies.jar ] || [ ! -f sqs-redis-bridge/target/sqs-redis-bridge-*-with-dependencies.jar ]; then \
+        echo "JARs not found, building from source..."; \
         mvn clean package -DskipTests; \
     else \
-        echo "kishax-api already built, skipping build step"; \
+        echo "JARs already exist, skipping build step"; \
     fi
 
 # Runtime stage
