@@ -9,20 +9,15 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Gradleビルド用にソースをコピー
-COPY build.gradle .
-COPY src ./src
+COPY . .
 
-# Gradle Wrapperをコピー
-COPY gradle ./gradle
-COPY gradlew .
-COPY settings.gradle* ./
-
-# 実行可能権限を付与
-RUN chmod +x ./gradlew
-
-# 依存関係をダウンロードしてビルド
-RUN ./gradlew build --no-daemon
+# Build the Kishax plugins
+RUN if [ ! -f "build/libs/discord-bot-1.0.0.jar" ]; then \
+      chmod +x ./gradlew && \
+      ./gradlew build --no-daemon; \
+    else \
+      echo "discord-bot plugins already built, skipping build step"; \
+    fi
 
 # ログディレクトリを作成
 RUN mkdir -p /app/logs
