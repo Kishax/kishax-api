@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.kishax.api</groupId>
   <artifactId>sqs-redis-bridge</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
   <packaging>jar</packaging>
   <name>Kishax API SQS-Redis Bridge</name>
   <description>SQS to Redis messaging bridge for Kishax infrastructure</description>
@@ -26,7 +26,7 @@
     <dependency>
       <groupId>net.kishax.api</groupId>
       <artifactId>common</artifactId>
-      <version>1.0.6</version>
+      <version>1.0.7</version>
     </dependency>
     <!-- AWS SDK -->
     <dependency>

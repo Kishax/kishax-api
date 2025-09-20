@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.kishax.api</groupId>
   <artifactId>common</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
   <packaging>jar</packaging>
   <name>Kishax API Common</name>
   <description>Common utilities and configurations for Kishax API modules</description>
