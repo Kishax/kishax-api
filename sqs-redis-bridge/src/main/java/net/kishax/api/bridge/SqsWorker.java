@@ -769,9 +769,9 @@ public class SqsWorker {
 
       logger.info("🎮 Processing Discord player event: {} for {} on {}", eventType, playerName, serverName);
 
-      // Forward to Discord via Redis pub/sub
+      // Convert to Discord-bot expected format
       String redisChannel = "discord_requests";
-      String redisMessage = data.toString();
+      String redisMessage = createDiscordActionMessage("player_" + eventType, data);
 
       redisClient.publish(redisChannel, redisMessage);
       logger.info("📡 Published Discord player event to Redis channel: {}", redisChannel);
@@ -791,15 +791,33 @@ public class SqsWorker {
 
       logger.info("🔥 Processing Discord server status: {} - {}", serverName, status);
 
-      // Forward to Discord via Redis pub/sub
+      // Convert to Discord-bot expected format
       String redisChannel = "discord_requests";
-      String redisMessage = data.toString();
+      String redisMessage = createDiscordActionMessage("server_status", data);
 
       redisClient.publish(redisChannel, redisMessage);
       logger.info("📡 Published Discord server status to Redis channel: {}", redisChannel);
 
     } catch (Exception error) {
       logger.error("❌ Error processing Discord server status: {}", error.getMessage(), error);
+    }
+  }
+
+  /**
+   * Create Discord action message in the format expected by discord-bot
+   */
+  private String createDiscordActionMessage(String action, JsonNode data) {
+    try {
+      Map<String, Object> discordMessage = new HashMap<>();
+      discordMessage.put("type", "discord_action");
+      discordMessage.put("action", action);
+      discordMessage.put("source", "mc-server");
+      discordMessage.put("data", objectMapper.convertValue(data, Map.class));
+
+      return objectMapper.writeValueAsString(discordMessage);
+    } catch (Exception e) {
+      logger.error("❌ Error creating Discord action message: {}", e.getMessage(), e);
+      return data.toString(); // Fallback to original format
     }
   }
 
@@ -813,9 +831,9 @@ public class SqsWorker {
 
       logger.info("💬 Processing Discord embed message: {}", content);
 
-      // Forward to Discord via Redis pub/sub
+      // Convert to Discord-bot expected format
       String redisChannel = "discord_requests";
-      String redisMessage = data.toString();
+      String redisMessage = createDiscordActionMessage("embed", data);
 
       redisClient.publish(redisChannel, redisMessage);
       logger.info("📡 Published Discord embed to Redis channel: {}", redisChannel);
