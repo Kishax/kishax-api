@@ -6,16 +6,6 @@ RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files first for better layer caching
-COPY pom.xml .
-COPY */pom.xml ./*/
-COPY common/pom.xml ./common/
-COPY mc-auth/pom.xml ./mc-auth/
-COPY sqs-redis-bridge/pom.xml ./sqs-redis-bridge/
-
-# Download dependencies (this layer will be cached if pom.xml doesn't change)
-RUN mvn dependency:go-offline -DskipTests || true
-
 # Copy source code
 COPY . .
 
