@@ -134,7 +134,7 @@ public class RedisClient {
       ensureConnection();
       String jsonMessage = objectMapper.writeValueAsString(message);
       long subscriberCount = syncCommands.publish(channel, jsonMessage);
-      logger.info("📡 Published to Redis channel {} (subscribers: {}): {}", channel, subscriberCount, jsonMessage);
+      logger.debug("📡 Published to Redis channel {} (subscribers: {}): {}", channel, subscriberCount, jsonMessage);
     } catch (Exception e) {
       logger.error("❌ Error publishing to Redis channel: {}", e.getMessage(), e);
       throw new RuntimeException("Failed to publish to Redis channel", e);
