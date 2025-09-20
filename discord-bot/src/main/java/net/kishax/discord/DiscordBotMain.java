@@ -16,8 +16,9 @@ public class DiscordBotMain {
 
   private JDA jda;
   private Configuration config;
-  private SqsMessageProcessor sqsProcessor;
   private RedisMessageProcessor redisProcessor;
+  private EmojiManager emojiManager;
+  private MessageIdManager messageIdManager;
 
   public static void main(String[] args) {
     new DiscordBotMain().start();
@@ -33,18 +34,18 @@ public class DiscordBotMain {
       // Discord Bot初期化
       initDiscordBot();
 
-      // SQSメッセージプロセッサー開始
-      sqsProcessor = new SqsMessageProcessor(null, jda, config);
+      // 必要なマネージャーを初期化
+      emojiManager = new EmojiManager(jda, config);
+      messageIdManager = new MessageIdManager();
 
-      // Redis使用モードかSQS直接使用モードかを判定
+      // Redis使用モードでのみ動作
       String redisUrl = config.getRedisUrl();
       if (redisUrl != null && !redisUrl.isEmpty()) {
         logger.info("Starting sqs message processer with redis-connection mode...");
-        redisProcessor = new RedisMessageProcessor(redisUrl, sqsProcessor);
+        redisProcessor = new RedisMessageProcessor(redisUrl, jda, config, emojiManager, messageIdManager);
         redisProcessor.start();
       } else {
-        logger.info("Starting sqs message processer with direct-sqs mode...");
-        sqsProcessor.start();
+        throw new IllegalArgumentException("Redis URL is required for this discord-bot version");
       }
 
       logger.info("Discord Bot is running.");
@@ -84,9 +85,6 @@ public class DiscordBotMain {
       redisProcessor.stop();
     }
 
-    if (sqsProcessor != null) {
-      sqsProcessor.stop();
-    }
 
     if (jda != null) {
       jda.shutdown();
