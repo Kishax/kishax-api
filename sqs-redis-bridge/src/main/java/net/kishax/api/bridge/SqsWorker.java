@@ -10,6 +10,8 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,6 +38,7 @@ public class SqsWorker {
   private final ScheduledExecutorService executor;
   private final AtomicBoolean running = new AtomicBoolean(false);
   private RedisClient.RedisSubscription webToMcSubscription;
+  private final Map<String, String> messageQueueMap = new HashMap<>();
 
   // Callback for OTP display integration
   private static OtpDisplayCallback otpDisplayCallback;
@@ -202,10 +205,20 @@ public class SqsWorker {
       List<Message> primaryMessages = pollFromQueue(queueUrl);
       List<Message> allMessages = new ArrayList<>(primaryMessages);
 
+      // Track which queue each message came from
+      for (Message message : primaryMessages) {
+        messageQueueMap.put(message.messageId(), queueUrl);
+      }
+
       // Poll from additional queues (e.g., DISCORD queue in WEB mode)
       for (String additionalQueueUrl : additionalQueueUrls) {
         List<Message> additionalMessages = pollFromQueue(additionalQueueUrl);
         allMessages.addAll(additionalMessages);
+
+        // Track which queue each additional message came from
+        for (Message message : additionalMessages) {
+          messageQueueMap.put(message.messageId(), additionalQueueUrl);
+        }
       }
 
       if (!allMessages.isEmpty()) {
@@ -695,15 +708,27 @@ public class SqsWorker {
         return;
       }
 
+      // Get the correct queue URL for this message
+      String correctQueueUrl = messageQueueMap.get(message.messageId());
+      if (correctQueueUrl == null) {
+        logger.warn("! Cannot delete message: no queue URL found for message ID {}", message.messageId());
+        correctQueueUrl = queueUrl; // Fallback to primary queue
+      }
+
       DeleteMessageRequest deleteRequest = DeleteMessageRequest.builder()
-          .queueUrl(queueUrl)
+          .queueUrl(correctQueueUrl)
           .receiptHandle(message.receiptHandle())
           .build();
 
       sqsClient.deleteMessage(deleteRequest);
+
+      // Remove the message from the queue mapping after successful deletion
+      messageQueueMap.remove(message.messageId());
+
       String receiptHandle = message.receiptHandle();
       String handleSnippet = receiptHandle.length() > 20 ? receiptHandle.substring(0, 20) + "..." : receiptHandle;
-      logger.info("🗑️ Message deleted successfully: {} (Receipt: {})",
+      logger.info("🗑️ Message deleted successfully from {}: {} (Receipt: {})",
+          correctQueueUrl.contains("discord") ? "DISCORD queue" : "WEB queue",
           message.messageId(), handleSnippet);
     } catch (Exception error) {
       logger.error("❌ Error deleting SQS message: {}", error.getMessage(), error);

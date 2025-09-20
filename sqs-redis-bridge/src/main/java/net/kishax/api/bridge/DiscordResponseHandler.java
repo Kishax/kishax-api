@@ -37,10 +37,10 @@ public class DiscordResponseHandler {
   public void startSubscription() {
     CompletableFuture.runAsync(() -> {
       try {
-        logger.info("Discord応答の購読を開始します");
+        logger.info("Subscribing discord response...");
         redisClient.subscribe(DISCORD_RESPONSES_CHANNEL, this::handleDiscordResponse);
       } catch (Exception e) {
-        logger.error("Discord応答の購読でエラーが発生しました", e);
+        logger.error("Error occurred while subscribing discord response: ", e);
       }
     });
   }
