@@ -6,19 +6,25 @@ RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 # Set working directory
 WORKDIR /app
 
-# Copy parent POM and module POMs
+# Copy dependency files first for better layer caching
 COPY pom.xml .
+COPY */pom.xml ./*/
 COPY common/pom.xml ./common/
-COPY sqs-redis-bridge/pom.xml ./sqs-redis-bridge/
 COPY mc-auth/pom.xml ./mc-auth/
+COPY sqs-redis-bridge/pom.xml ./sqs-redis-bridge/
 
-# Copy source files
-COPY common/src ./common/src
-COPY sqs-redis-bridge/src ./sqs-redis-bridge/src
-COPY mc-auth/src ./mc-auth/src
+# Download dependencies (this layer will be cached if pom.xml doesn't change)
+RUN mvn dependency:go-offline -DskipTests || true
 
-# Build all modules
-RUN mvn clean package -DskipTests
+# Copy source code
+COPY . .
+
+# Build the Kishax plugins
+RUN if [ ! -f "mc-auth/target/mc-auth-*-with-dependencies.jar" ] || [ ! -f "sqs-redis-bridge/target/sqs-redis-bridge-*-with-dependencies.jar" ]; then \
+        mvn clean package -DskipTests; \
+    else \
+        echo "kishax-api already built, skipping build step"; \
+    fi
 
 # Runtime stage
 FROM eclipse-temurin:21-jre
