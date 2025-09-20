@@ -53,14 +53,14 @@ public class SqsMessageProcessor {
 
   public void start() {
     if (running.compareAndSet(false, true)) {
-      logger.info("SQSメッセージプロセッサーを開始します");
+      logger.info("Starting the processer of sqs message...");
       executor.scheduleWithFixedDelay(this::pollMessages, 0, 5, TimeUnit.SECONDS);
     }
   }
 
   public void stop() {
     if (running.compareAndSet(true, false)) {
-      logger.info("SQSメッセージプロセッサーを停止します");
+      logger.info("Stopping the processer of sqs message...");
       executor.shutdown();
       try {
         if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
@@ -89,7 +89,7 @@ public class SqsMessageProcessor {
       List<software.amazon.awssdk.services.sqs.model.Message> messages = response.messages();
 
       if (!messages.isEmpty()) {
-        logger.debug("SQSメッセージを受信しました: {} 件", messages.size());
+        logger.debug("Received the sqs message: {} messages", messages.size());
       }
 
       for (software.amazon.awssdk.services.sqs.model.Message message : messages) {
@@ -97,18 +97,18 @@ public class SqsMessageProcessor {
           processMessage(message);
           deleteMessage(message);
         } catch (Exception e) {
-          logger.error("メッセージ処理でエラーが発生しました: {}", message.messageId(), e);
+          logger.error("An error occurred while processing sqs message: {}", message.messageId(), e);
         }
       }
 
     } catch (Exception e) {
-      logger.error("SQSポーリングでエラーが発生しました", e);
+      logger.error("An error occurred while polling sqs message", e);
     }
   }
 
   private void processMessage(software.amazon.awssdk.services.sqs.model.Message message) throws Exception {
     String body = message.body();
-    logger.debug("メッセージ処理開始: {}", message.messageId());
+    logger.debug("Starting process of sqs message: {}", message.messageId());
     processMessage(body);
   }
 
@@ -126,7 +126,7 @@ public class SqsMessageProcessor {
       case "embed" -> processEmbedMessage(json);
       case "player_event" -> processPlayerEventMessage(json);
       case "webhook" -> processWebhookMessage(json);
-      default -> logger.warn("不明なメッセージタイプです: {}", messageType);
+      default -> logger.warn("Unsupported message type: {}", messageType);
     }
   }
 
@@ -143,16 +143,16 @@ public class SqsMessageProcessor {
         default -> "⚪";
       };
 
-      channel.sendMessage(emoji + " **" + serverName + "** サーバーが " +
+      channel.sendMessage(emoji + " **" + serverName + "** The server is " +
           switch (status) {
-            case "online" -> "オンラインになりました";
-            case "offline" -> "オフラインになりました";
-            case "starting" -> "起動中です";
-            default -> "状態が変更されました: " + status;
+            case "online" -> "Now online!";
+            case "offline" -> "Now offline!";
+            case "starting" -> "Starting up...";
+            default -> "Status is changed: " + status;
           }).queue();
     }
 
-    logger.info("サーバーステータス更新: {} = {}", serverName, status);
+    logger.info("Updated server status: {} = {}", serverName, status);
   }
 
   private void processPlayerRequestMessage(JsonNode json) {
@@ -162,19 +162,19 @@ public class SqsMessageProcessor {
 
     TextChannel adminChannel = jda.getTextChannelById(config.getDiscordAdminChannelId());
     if (adminChannel != null) {
-      String message = "**サーバー起動リクエスト**\\n" +
-          "プレイヤー: " + playerName + "\\n" +
-          "サーバー: " + serverName + "\\n" +
-          "リクエストID: " + requestId;
+      String message = "**Request Server Starting**\\n" +
+          "Player: " + playerName + "\\n" +
+          "Server: " + serverName + "\\n" +
+          "Request ID: " + requestId;
 
       adminChannel.sendMessage(message)
           .addActionRow(
-              net.dv8tion.jda.api.interactions.components.buttons.Button.success("reqOK", "承認"),
-              net.dv8tion.jda.api.interactions.components.buttons.Button.danger("reqCancel", "拒否"))
+              net.dv8tion.jda.api.interactions.components.buttons.Button.success("reqOK", "Approve"),
+              net.dv8tion.jda.api.interactions.components.buttons.Button.danger("reqCancel", "Reject"))
           .queue();
     }
 
-    logger.info("プレイヤーリクエスト受信: {} が {} サーバーの起動をリクエスト", playerName, serverName);
+    logger.info("Received player request: {} is requested for {} server", playerName, serverName);
   }
 
   private void processBroadcastMessage(JsonNode json) {
@@ -188,7 +188,7 @@ public class SqsMessageProcessor {
       channel.sendMessage(content).queue();
     }
 
-    logger.info("ブロードキャストメッセージ送信: {} (chat={})", content, isChat);
+    logger.info("Sent broadcast message: {} (chat={})", content, isChat);
   }
 
   private void processEmbedMessage(JsonNode json) {
@@ -200,7 +200,7 @@ public class SqsMessageProcessor {
 
     TextChannel channel = jda.getTextChannelById(channelId);
     if (channel == null) {
-      logger.warn("チャンネルが見つかりません: {}", channelId);
+      logger.warn("Couldn't find the channel: {}", channelId);
       return;
     }
 
@@ -211,16 +211,16 @@ public class SqsMessageProcessor {
     if (shouldEdit && !messageId.isEmpty()) {
       // メッセージ編集
       channel.editMessageEmbedsById(messageId, embed.build()).queue(
-          success -> logger.debug("Embedメッセージを編集しました: {}", messageId),
-          error -> logger.error("Embedメッセージの編集に失敗しました: {}", messageId, error));
+          success -> logger.debug("Edit embed message: {}", messageId),
+          error -> logger.error("Failed to edit embed message: {}", messageId, error));
     } else {
       // 新規送信
       channel.sendMessageEmbeds(embed.build()).queue(
           message -> {
-            logger.debug("Embedメッセージを送信しました: {}", message.getId());
+            logger.debug("Sent the embed message: {}", message.getId());
             // メッセージIDを保存（必要に応じて）
           },
-          error -> logger.error("Embedメッセージの送信に失敗しました", error));
+          error -> logger.error("Failed to send an embed message", error));
     }
   }
 
@@ -235,7 +235,7 @@ public class SqsMessageProcessor {
       case "leave" -> processPlayerLeave(playerName, playerUuid, serverName);
       case "move" -> processPlayerMove(playerName, playerUuid, serverName);
       case "chat" -> processPlayerChat(json);
-      default -> logger.warn("不明なプレイヤーイベントタイプ: {}", eventType);
+      default -> logger.warn("Unsupported player event type: {}", eventType);
     }
   }
 
@@ -243,7 +243,8 @@ public class SqsMessageProcessor {
     emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
         .thenAccept(emojiId -> {
           String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " が " + serverName + " サーバーに参加しました";
+          String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
+              + " server";
 
           EmbedBuilder embed = new EmbedBuilder()
               .setDescription(content)
@@ -263,7 +264,8 @@ public class SqsMessageProcessor {
     emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
         .thenAccept(emojiId -> {
           String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " が " + serverName + " サーバーから退出しました";
+          String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+              + " server";
 
           if (messageId != null) {
             // 既存メッセージを編集
@@ -286,7 +288,8 @@ public class SqsMessageProcessor {
     emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
         .thenAccept(emojiId -> {
           String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-          String content = (emojiString != null ? emojiString : "") + playerName + " が " + serverName + " サーバーへ移動しました";
+          String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+              + " server";
 
           EmbedBuilder embed = new EmbedBuilder()
               .setDescription(content)
@@ -348,7 +351,7 @@ public class SqsMessageProcessor {
     TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
     if (chatChannel != null) {
       chatChannel.sendMessage(content).queue();
-      logger.info("Webhookメッセージを送信しました: {}", userName);
+      logger.info("Sent webhook message: {}", userName);
     }
   }
 
@@ -360,9 +363,9 @@ public class SqsMessageProcessor {
           .build();
 
       sqsClient.deleteMessage(deleteRequest);
-      logger.debug("メッセージを削除しました: {}", message.messageId());
+      logger.debug("Deleted message: {}", message.messageId());
     } catch (Exception e) {
-      logger.error("メッセージ削除でエラーが発生しました: {}", message.messageId(), e);
+      logger.error("An error occurred while deleting message: {}", message.messageId(), e);
     }
   }
 }

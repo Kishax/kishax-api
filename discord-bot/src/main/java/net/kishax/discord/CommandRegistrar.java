@@ -20,17 +20,18 @@ public class CommandRegistrar {
       jda.upsertCommand(
           Commands.slash("kishax", "Kishax commands")
               .addSubcommands(
-                  new SubcommandData("image_add_q", "画像マップをキューに追加するコマンド(urlか添付ファイルのどっちかを指定可能)")
-                      .addOption(OptionType.STRING, "url", "画像リンクの設定項目", false)
-                      .addOption(OptionType.ATTACHMENT, "image", "ファイルの添付項目", false)
-                      .addOption(OptionType.STRING, "title", "画像マップのタイトル設定項目", false)
-                      .addOption(OptionType.STRING, "comment", "画像マップのコメント設定項目", false)))
+                  new SubcommandData("image_add_q",
+                      "Add an image map at queue. Please specific url as text or file attached)")
+                      .addOption(OptionType.STRING, "url", "url for image", false)
+                      .addOption(OptionType.ATTACHMENT, "image", "attachment for image", false)
+                      .addOption(OptionType.STRING, "title", "title for image map", false)
+                      .addOption(OptionType.STRING, "comment", "comment for image map", false)))
           .queue(
-              success -> logger.info("スラッシュコマンドを登録しました"),
-              error -> logger.error("スラッシュコマンドの登録に失敗しました", error));
+              success -> logger.info("Registered slash commands successfully"),
+              error -> logger.error("Failed to register slash commands: ", error));
 
     } catch (Exception e) {
-      logger.error("コマンド登録でエラーが発生しました", e);
+      logger.error("An error occurred while registering discord commands: ", e);
     }
   }
 }

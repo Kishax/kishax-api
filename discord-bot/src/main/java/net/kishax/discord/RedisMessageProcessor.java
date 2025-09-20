@@ -46,7 +46,7 @@ public class RedisMessageProcessor {
     }
 
     running = true;
-    logger.info("Redisメッセージプロセッサーを開始します");
+    logger.info("Starting the processer of redis message...");
 
     // Subscribe to discord requests
     CompletableFuture.runAsync(() -> {
@@ -61,16 +61,16 @@ public class RedisMessageProcessor {
 
           @Override
           public void onSubscribe(String channel, int subscribedChannels) {
-            logger.info("Redisチャンネルに購読しました: {}", channel);
+            logger.info("Subscribed the redis channel: {}", channel);
           }
 
           @Override
           public void onUnsubscribe(String channel, int subscribedChannels) {
-            logger.info("Redisチャンネルの購読を解除しました: {}", channel);
+            logger.info("Canceld the publishing redis chennel: {}", channel);
           }
         }, DISCORD_REQUESTS_CHANNEL);
       } catch (Exception e) {
-        logger.error("Redis購読でエラーが発生しました", e);
+        logger.error("An error occurred while subscribeing redis channel", e);
       }
     }, executorService);
   }
@@ -84,7 +84,7 @@ public class RedisMessageProcessor {
     }
 
     running = false;
-    logger.info("Redisメッセージプロセッサーを停止します");
+    logger.info("Stopping the processer of redis message...");
 
     if (executorService != null && !executorService.isShutdown()) {
       executorService.shutdown();
@@ -166,10 +166,9 @@ public class RedisMessageProcessor {
 
       try (Jedis jedis = jedisPool.getResource()) {
         jedis.publish(DISCORD_RESPONSES_CHANNEL, responseJson);
-        logger.debug("Discord成功応答を送信しました: {}", originalAction);
       }
     } catch (Exception e) {
-      logger.error("成功応答送信でエラーが発生しました", e);
+      logger.error("An error occurred while responding the success message", e);
     }
   }
 
@@ -193,10 +192,10 @@ public class RedisMessageProcessor {
 
       try (Jedis jedis = jedisPool.getResource()) {
         jedis.publish(DISCORD_RESPONSES_CHANNEL, responseJson);
-        logger.warn("Discordエラー応答を送信しました: {} - {}", originalAction, errorMessage);
+        logger.warn("Sent the error of discord responding: {} - {}", originalAction, errorMessage);
       }
     } catch (Exception e) {
-      logger.error("エラー応答送信でエラーが発生しました", e);
+      logger.error("An error occurred while responding discord error", e);
     }
   }
 
@@ -219,10 +218,10 @@ public class RedisMessageProcessor {
 
       try (Jedis jedis = jedisPool.getResource()) {
         jedis.publish(DISCORD_RESPONSES_CHANNEL, responseJson);
-        logger.debug("Discord応答を送信しました: {} - {}", action, result);
+        logger.info("📤 Sent discord reponse: {} - {}", action, result);
       }
     } catch (Exception e) {
-      logger.error("応答送信でエラーが発生しました", e);
+      logger.error("An error occurred while sending discord response", e);
     }
   }
 }

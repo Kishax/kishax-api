@@ -47,7 +47,7 @@ public class EmojiManager {
     return createOrGetEmojiId(defaultEmojiName)
         .thenAccept(id -> this.defaultEmojiId = id)
         .exceptionally(ex -> {
-          logger.error("デフォルト絵文字IDの更新に失敗しました", ex);
+          logger.error("Failed to update default emoji id", ex);
           return null;
         });
   }
@@ -159,13 +159,13 @@ public class EmojiManager {
   private Guild getGuild() {
     long guildId = config.getDiscordGuildId();
     if (guildId == 0) {
-      logger.warn("Guild IDが設定されていません");
+      logger.warn("No Guild ID at config");
       return null;
     }
 
     Guild guild = jda.getGuildById(guildId);
     if (guild == null) {
-      logger.warn("指定されたGuild IDのギルドが見つかりません: {}", guildId);
+      logger.warn("Couldn't find any guilds from your specific guild id: {}", guildId);
     }
     return guild;
   }
@@ -181,7 +181,7 @@ public class EmojiManager {
 
         BufferedImage bufferedImage = ImageIO.read(url);
         if (bufferedImage == null) {
-          logger.error("画像の読み込みに失敗しました: {}", imageUrl);
+          logger.error("Failed to read image: {}", imageUrl);
           return null;
         }
 
@@ -192,17 +192,17 @@ public class EmojiManager {
         return guild.createEmoji(emojiName, Icon.from(imageBytes))
             .submit()
             .thenApply(emoji -> {
-              logger.info("絵文字を作成しました: {}", emojiName);
+              logger.info("Emoji is created: {}", emojiName);
               return emoji.getId();
             })
             .exceptionally(ex -> {
-              logger.error("絵文字の作成に失敗しました: {}", emojiName, ex);
+              logger.error("Failed to create emoji: {}", emojiName, ex);
               return null;
             })
             .join();
 
       } catch (Exception e) {
-        logger.error("画像のダウンロードに失敗しました: {}", imageUrl, e);
+        logger.error("Failed to download the image: {}", imageUrl, e);
         return null;
       }
     });

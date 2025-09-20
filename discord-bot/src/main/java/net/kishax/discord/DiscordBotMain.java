@@ -25,7 +25,7 @@ public class DiscordBotMain {
 
   public void start() {
     try {
-      logger.info("Discord Bot を起動しています...");
+      logger.info("Starting discord bot...");
 
       // 設定読み込み
       config = new Configuration();
@@ -39,21 +39,21 @@ public class DiscordBotMain {
       // Redis使用モードかSQS直接使用モードかを判定
       String redisUrl = config.getRedisUrl();
       if (redisUrl != null && !redisUrl.isEmpty()) {
-        logger.info("Redis経由モードで起動します");
+        logger.info("Starting sqs message processer with redis-connection mode...");
         redisProcessor = new RedisMessageProcessor(redisUrl, sqsProcessor);
         redisProcessor.start();
       } else {
-        logger.info("SQS直接モードで起動します");
+        logger.info("Starting sqs message processer with direct-sqs mode...");
         sqsProcessor.start();
       }
 
-      logger.info("Discord Bot が正常に起動しました");
+      logger.info("Discord Bot is running.");
 
       // シャットダウンフック
       Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
 
     } catch (Exception e) {
-      logger.error("Discord Bot の起動に失敗しました", e);
+      logger.error("An error occurred while starting discord bot", e);
       System.exit(1);
     }
   }
@@ -61,7 +61,7 @@ public class DiscordBotMain {
   private void initDiscordBot() throws Exception {
     String token = config.getDiscordToken();
     if (token == null || token.isEmpty()) {
-      throw new IllegalArgumentException("Discord Token が設定されていません");
+      throw new IllegalArgumentException("Discord token is not set in configuration");
     }
 
     jda = JDABuilder.createDefault(token)
@@ -74,11 +74,11 @@ public class DiscordBotMain {
     // スラッシュコマンド登録
     CommandRegistrar.registerCommands(jda, config);
 
-    logger.info("Discord Bot にログインしました");
+    logger.info("Discord Bot initialized successfully");
   }
 
   private void shutdown() {
-    logger.info("Discord Bot をシャットダウンしています...");
+    logger.info("Shutting down Discord Bot...");
 
     if (redisProcessor != null) {
       redisProcessor.stop();
@@ -92,6 +92,6 @@ public class DiscordBotMain {
       jda.shutdown();
     }
 
-    logger.info("Discord Bot がシャットダウンしました");
+    logger.info("Discord Bot shut down successfully");
   }
 }
