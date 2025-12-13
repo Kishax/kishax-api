@@ -1,0 +1,67 @@
+services:
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: kishax-discord-redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - discord-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+
+  discord-bot:
+    build: .
+    container_name: kishax-discord-bot
+    environment:
+      # AWS Configuration
+      AWS_REGION: ${AWS_REGION}
+      MC_WEB_SQS_ACCESS_KEY_ID: ${MC_WEB_SQS_ACCESS_KEY_ID}
+      MC_WEB_SQS_SECRET_ACCESS_KEY: ${MC_WEB_SQS_SECRET_ACCESS_KEY}
+
+      # SQS Queue URLs (New naming)
+      TO_WEB_QUEUE_URL: ${TO_WEB_QUEUE_URL}
+      TO_MC_QUEUE_URL: ${TO_MC_QUEUE_URL}
+      TO_DISCORD_QUEUE_URL: ${TO_DISCORD_QUEUE_URL}
+
+      # Redis Configuration
+      REDIS_URL: ${REDIS_URL:-redis://host.docker.internal:6379}
+      REDIS_CONNECTION_TIMEOUT: ${REDIS_CONNECTION_TIMEOUT:-5000}
+      REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-3000}
+
+      # Discord Configuration
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_CHANNEL_ID: ${DISCORD_CHANNEL_ID}
+      DISCORD_CHAT_CHANNEL_ID: ${DISCORD_CHAT_CHANNEL_ID}
+      DISCORD_ADMIN_CHANNEL_ID: ${DISCORD_ADMIN_CHANNEL_ID}
+      DISCORD_RULE_CHANNEL_ID: ${DISCORD_RULE_CHANNEL_ID}
+      DISCORD_RULE_MESSAGE_ID: ${DISCORD_RULE_MESSAGE_ID}
+      DISCORD_PRESENCE_ACTIVITY: ${DISCORD_PRESENCE_ACTIVITY:-Kishaxサーバー}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      BE_DEFAULT_EMOJI_NAME: ${BE_DEFAULT_EMOJI_NAME:-steve}
+
+      # SQS Configuration for Discord
+      AWS_SQS_MAX_MESSAGES: ${AWS_SQS_MAX_MESSAGES:-10}
+      AWS_SQS_WAIT_TIME_SECONDS: ${AWS_SQS_WAIT_TIME_SECONDS:-20}
+
+      # Queue Mode Configuration
+      QUEUE_MODE: ${QUEUE_MODE:-DISCORD}
+
+      # SQS Worker Configuration
+      SQS_WORKER_ENABLED: ${SQS_WORKER_ENABLED:-false}
+      SQS_WORKER_POLLING_INTERVAL: ${SQS_WORKER_POLLING_INTERVAL:-5}
+      SQS_WORKER_MAX_MESSAGES: ${SQS_WORKER_MAX_MESSAGES:-10}
+      SQS_WORKER_WAIT_TIME: ${SQS_WORKER_WAIT_TIME:-20}
+      SQS_WORKER_VISIBILITY_TIMEOUT: ${SQS_WORKER_VISIBILITY_TIMEOUT:-300}
+
+      # Application Configuration
+      SHUTDOWN_GRACE_PERIOD: ${SHUTDOWN_GRACE_PERIOD:-10}
+    networks:
+      - discord-network
+    restart: unless-stopped
+
+networks:
+  discord-network:
+    driver: bridge
