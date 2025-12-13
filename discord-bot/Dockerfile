@@ -1,5 +1,5 @@
 # Discord Bot Dockerfile
-FROM eclipse-temurin:21-jdk-slim
+FROM eclipse-temurin:21-jdk
 
 # 作業ディレクトリを設定
 WORKDIR /app
