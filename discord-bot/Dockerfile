@@ -23,8 +23,10 @@ RUN if [ ! -f build/libs/discord-bot-*.jar ]; then \
 # ログディレクトリを作成
 RUN mkdir -p /app/logs
 
-# 非rootユーザーを作成
-RUN useradd -m -u 1000 discord-bot && \
+# 非rootユーザーを作成（既存の場合はスキップ）
+RUN if ! id -u discord-bot > /dev/null 2>&1; then \
+      useradd -m -u 1000 discord-bot; \
+    fi && \
     chown -R discord-bot:discord-bot /app
 
 # ユーザーを切り替え
