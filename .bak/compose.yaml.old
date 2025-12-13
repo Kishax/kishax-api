@@ -1,0 +1,130 @@
+services:
+  # Redis for pub/sub communication between Java and TypeScript
+  redis:
+    image: redis:7-alpine
+    container_name: kishax-api-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles:
+      - test
+
+  # LocalStack for AWS services emulation (SQS, etc.)
+  localstack:
+    image: localstack/localstack:3.0
+    container_name: kishax-localstack
+    ports:
+      - "4566:4566" # LocalStack gateway
+      - "4510-4559:4510-4559" # External services port range
+    environment:
+      - SERVICES=sqs,s3,cloudformation,iam
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    volumes:
+      - "./tmp/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    profiles:
+      - test
+
+  # Test runner service (for running integration tests)
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: kishax-test-runner
+    depends_on:
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    environment:
+      # LocalStack configuration
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_DEFAULT_REGION=ap-northeast-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      # Redis configuration
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      # Application configuration (New naming)
+      - TO_WEB_QUEUE_URL=http://localstack:4566/000000000000/to-web-queue
+      - TO_MC_QUEUE_URL=http://localstack:4566/000000000000/to-mc-queue
+      - TO_DISCORD_QUEUE_URL=http://localstack:4566/000000000000/to-discord-queue
+      - MC_WEB_SQS_ACCESS_KEY_ID=test
+      - MC_WEB_SQS_SECRET_ACCESS_KEY=test
+      - LOG_LEVEL=DEBUG
+      # Integration test flag
+      - RUN_INTEGRATION_TESTS=true
+    volumes:
+      - .:/app
+    working_dir: /app
+    profiles:
+      - test
+
+  # SQS Redis Bridge Service
+  sqs-redis-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kishax-sqs-redis-bridge
+    environment:
+      - ENVIRONMENT=production
+      # AWS Configuration
+      - AWS_REGION=${AWS_REGION:-ap-northeast-1}
+      - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
+      - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
+      - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
+      - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
+      - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
+      # Redis Configuration
+      - REDIS_URL=${REDIS_URL:-redis://host.docker.internal:6379}
+      - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
+      - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
+      # Queue Configuration
+      - QUEUE_MODE=${QUEUE_MODE:-WEB}
+      - SQS_WORKER_ENABLED=true
+      - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-5}
+      - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
+      - SQS_WORKER_WAIT_TIME_SECONDS=${SQS_WORKER_WAIT_TIME_SECONDS:-20}
+      - SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS=${SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS:-30}
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: ["java", "-jar", "/app/sqs-redis-bridge.jar"]
+    restart: unless-stopped
+
+  # MC Authentication Service
+  mc-auth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kishax-mc-auth
+    ports:
+      - "8080:8080"
+    environment:
+      - ENVIRONMENT=production
+      # Authentication API Configuration
+      - AUTH_API_ENABLED=true
+      - AUTH_API_PORT=8080
+      - AUTH_API_KEY=${AUTH_API_KEY:-local-dev-api-key}
+      # Database Configuration
+      - DATABASE_URL=${DATABASE_URL:-jdbc:postgresql://host.docker.internal:5432/kishax_db?user=postgres&password=postgres}
+      # Logging Configuration
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    command: ["java", "-jar", "/app/mc-auth.jar"]
+    restart: unless-stopped
+
+volumes:
+  redis-data:
