@@ -103,7 +103,7 @@ services:
   # Discord Bot Service
   discord-bot:
     build:
-      context: ../discord
+      context: ./discord-bot
       dockerfile: Dockerfile
     container_name: kishax-discord-bot
     depends_on:
