@@ -33,3 +33,5 @@ USER appuser
 
 # Start the SQS Redis Bridge
 CMD ["java", "-jar", "/app/sqs-redis-bridge.jar"]
+
+
