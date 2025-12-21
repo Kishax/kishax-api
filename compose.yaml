@@ -48,37 +48,38 @@ services:
       retries: 5
 
   # SQS Redis Bridge Service - MC用 (Redis #1)
-  sqs-redis-bridge-mc:
-    build:
-      context: .
-      dockerfile: Dockerfile.sqs-redis-bridge
-    container_name: kishax-sqs-redis-bridge-mc
-    depends_on:
-      redis-mc:
-        condition: service_healthy
-    environment:
-      - ENVIRONMENT=production
-      # AWS Configuration
-      - AWS_REGION=${AWS_REGION:-ap-northeast-1}
-      - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
-      - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
-      - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
-      - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
-      - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
-      # Redis Configuration (Redis #1 - MC用)
-      - REDIS_URL=redis://redis-mc:6379
-      - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
-      - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
-      # Queue Configuration
-      - QUEUE_MODE=MC
-      - SQS_WORKER_ENABLED=true
-      - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-5}
-      - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
-      - SQS_WORKER_WAIT_TIME_SECONDS=${SQS_WORKER_WAIT_TIME_SECONDS:-20}
-      - SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS=${SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS:-30}
-      # Logging Configuration
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    restart: unless-stopped
+  # NOTE: Disabled - MC Server (Velocity) runs its own SqsWorker internally
+  # sqs-redis-bridge-mc:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.sqs-redis-bridge
+  #   container_name: kishax-sqs-redis-bridge-mc
+  #   depends_on:
+  #     redis-mc:
+  #       condition: service_healthy
+  #   environment:
+  #     - ENVIRONMENT=production
+  #     # AWS Configuration
+  #     - AWS_REGION=${AWS_REGION:-ap-northeast-1}
+  #     - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
+  #     - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
+  #     - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
+  #     - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
+  #     - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
+  #     # Redis Configuration (Redis #1 - MC用)
+  #     - REDIS_URL=redis://redis-mc:6379
+  #     - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
+  #     - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
+  #     # Queue Configuration
+  #     - QUEUE_MODE=MC
+  #     - SQS_WORKER_ENABLED=true
+  #     - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-5}
+  #     - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
+  #     - SQS_WORKER_WAIT_TIME_SECONDS=${SQS_WORKER_WAIT_TIME_SECONDS:-20}
+  #     - SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS=${SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS:-30}
+  #     # Logging Configuration
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   restart: unless-stopped
 
   # SQS Redis Bridge Service - Web用 (Redis #2)
   sqs-redis-bridge-web:
