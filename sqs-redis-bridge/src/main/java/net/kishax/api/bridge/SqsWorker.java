@@ -542,6 +542,18 @@ public class SqsWorker {
   }
 
   /**
+   * Send auth token saved notification to MC
+   */
+  public void sendAuthTokenSavedToMc(String mcid, String uuid, String authToken) {
+    if (webToMcSender != null) {
+      webToMcSender.sendAuthTokenSaved(mcid, uuid, authToken);
+      logger.info("📤 Auth token saved notification sent to MC for player: {}", mcid);
+    } else {
+      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth token saved notification");
+    }
+  }
+
+  /**
    * Send command to MC
    */
   public void sendCommandToMc(String commandType, String playerName, Object data) {
@@ -629,8 +641,12 @@ public class SqsWorker {
           handleAuthCompletionMessage(data);
           logger.info("✅ Auth completion message from Redis processed successfully");
         }
+        case "mc_auth_token_saved" -> {
+          handleAuthTokenSavedMessage(data);
+          logger.info("✅ Auth token saved message from Redis processed successfully");
+        }
         default -> {
-          logger.warn("! Unknown Redis message type: {}", messageType);
+          logger.warn("❗ Unknown Redis message type: {}", messageType);
         }
       }
     } catch (Exception error) {
@@ -689,6 +705,18 @@ public class SqsWorker {
 
     logger.info("📋 Processing player request from Redis: {} for player: {}", requestType, playerName);
     sendPlayerRequestToMc(requestType, playerName, requestData);
+  }
+
+  /**
+   * Handle auth token saved message from Redis
+   */
+  private void handleAuthTokenSavedMessage(JsonNode data) {
+    String mcid = data.path("mcid").asText();
+    String uuid = data.path("uuid").asText();
+    String authToken = data.path("authToken").asText();
+
+    logger.info("✅ Processing auth token saved notification for player: {} ({})", mcid, uuid);
+    sendAuthTokenSavedToMc(mcid, uuid, authToken);
   }
 
   /**
