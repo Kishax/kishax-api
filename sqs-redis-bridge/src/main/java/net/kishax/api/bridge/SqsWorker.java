@@ -310,6 +310,11 @@ public class SqsWorker {
           deleteMessage(message);
           logger.info("✅ Web MC Auth Confirm message processed and deleted successfully");
         }
+        case "mc_auth_token_saved" -> {
+          handleAuthTokenSavedMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ MC Auth Token Saved message processed and deleted successfully");
+        }
         case "player_event" -> {
           handleDiscordPlayerEventMessage(messageData);
           deleteMessage(message);
