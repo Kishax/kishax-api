@@ -43,6 +43,7 @@ public class SqsWorker {
   // Callback for OTP display integration
   private static OtpDisplayCallback otpDisplayCallback;
   private static AuthConfirmCallback authConfirmCallback;
+  private static AuthTokenSavedCallback authTokenSavedCallback;
 
   /**
    * Interface for OTP display callback
@@ -59,6 +60,13 @@ public class SqsWorker {
   }
 
   /**
+   * Interface for auth token saved callback
+   */
+  public interface AuthTokenSavedCallback {
+    void onAuthTokenSaved(String mcid, String uuid, String authToken);
+  }
+
+  /**
    * Set the OTP display callback
    */
   public static void setOtpDisplayCallback(OtpDisplayCallback callback) {
@@ -70,6 +78,13 @@ public class SqsWorker {
    */
   public static void setAuthConfirmCallback(AuthConfirmCallback callback) {
     authConfirmCallback = callback;
+  }
+
+  /**
+   * Set the Auth Token Saved callback
+   */
+  public static void setAuthTokenSavedCallback(AuthTokenSavedCallback callback) {
+    authTokenSavedCallback = callback;
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
@@ -550,11 +565,27 @@ public class SqsWorker {
    * Send auth token saved notification to MC
    */
   public void sendAuthTokenSavedToMc(String mcid, String uuid, String authToken) {
-    if (webToMcSender != null) {
-      webToMcSender.sendAuthTokenSaved(mcid, uuid, authToken);
-      logger.info("📤 Auth token saved notification sent to MC for player: {}", mcid);
+    // MC mode: Use callback (VelocitySqsMessageHandler)
+    if ("MC".equalsIgnoreCase(queueMode)) {
+      // MC側ではSqsMessageHandlerのコールバックを使用
+      if (authTokenSavedCallback != null) {
+        try {
+          authTokenSavedCallback.onAuthTokenSaved(mcid, uuid, authToken);
+          logger.info("📤 Auth token saved notification sent via callback for player: {}", mcid);
+        } catch (Exception e) {
+          logger.error("❌ Auth token saved callback failed for player: {} ({})", mcid, uuid, e);
+        }
+      } else {
+        logger.warn("⚠️ No auth token saved callback registered in MC mode.");
+      }
     } else {
-      logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth token saved notification");
+      // WEB mode: Forward to MC via SQS
+      if (webToMcSender != null) {
+        webToMcSender.sendAuthTokenSaved(mcid, uuid, authToken);
+        logger.info("📤 Auth token saved notification sent to MC for player: {}", mcid);
+      } else {
+        logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth token saved notification");
+      }
     }
   }
 
