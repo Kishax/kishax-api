@@ -214,7 +214,7 @@ public class SqsWorker {
     }
 
     try {
-      System.out.println("SQS Worker: Polling for messages...");
+      // System.out.println("SQS Worker: Polling for messages...");  // ログ圧迫防止のためコメントアウト
 
       // Poll from primary queue
       List<Message> primaryMessages = pollFromQueue(queueUrl);
@@ -244,7 +244,7 @@ public class SqsWorker {
           processMessage(message);
         }
       } else {
-        System.out.println("SQS Worker: No messages received");
+        // System.out.println("SQS Worker: No messages received");  // ログ圧迫防止のためコメントアウト
       }
     } catch (Exception error) {
       logger.error("❌ Error polling SQS messages: {}", error.getMessage(), error);
