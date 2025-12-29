@@ -65,30 +65,32 @@ public class SqsWorkerApplication {
         logger.info("🌐 Starting WEB mode with bidirectional SQS workers...");
 
         // Worker 1: Process to-mc queue (Web → MC messages)
+        // This worker also subscribes to Redis Pub/Sub for web_to_mc
         logger.info("📥 Starting Worker 1: to-mc queue (Web → MC)");
         this.toMcWorker = new SqsWorker(
             sqsClient,
             config.getToMcQueueUrl(),  // Poll from to-mc queue
-            queueMode,
+            queueMode,  // WEB mode - will subscribe to Redis
             redisClient,
             webToMcSender,
             mcToWebSender,
             config);
         toMcWorker.start();
-        logger.info("✅ Worker 1 started: Polling to-mc queue");
+        logger.info("✅ Worker 1 started: Polling to-mc queue + Redis Pub/Sub");
 
         // Worker 2: Process to-web queue (MC → Web responses)
+        // This worker should NOT subscribe to Redis Pub/Sub
         logger.info("📥 Starting Worker 2: to-web queue (MC → Web responses)");
         this.toWebWorker = new SqsWorker(
             sqsClient,
             config.getToWebQueueUrl(),  // Poll from to-web queue
-            queueMode,
+            "MC",  // Use MC mode to skip Redis subscription
             redisClient,
             webToMcSender,
             mcToWebSender,
             config);
         toWebWorker.start();
-        logger.info("✅ Worker 2 started: Polling to-web queue for MC responses");
+        logger.info("✅ Worker 2 started: Polling to-web queue (SQS only, no Redis)");
 
       } else {
         // MC mode: Only process to-web queue
