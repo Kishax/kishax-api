@@ -389,13 +389,22 @@ public class RedisMessageProcessor {
 
   private void processPlayerLeave(String playerName, String playerUuid, String serverName) {
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
+    String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
 
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
-                + " server";
+
+            String content;
+            if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
+              // 既存内容に退出情報を追記
+              content = existingContent + "\n\n👋 Exited from " + serverName + " server";
+            } else {
+              // 新規メッセージ（Join情報がない場合）
+              content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+                  + " server";
+            }
 
             if (messageId != null) {
               // 既存メッセージを編集
@@ -414,8 +423,16 @@ public class RedisMessageProcessor {
       emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
-                + " server";
+
+            String content;
+            if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
+              // 既存内容に退出情報を追記
+              content = existingContent + "\n\n👋 Exited from " + serverName + " server";
+            } else {
+              // 新規メッセージ（Join情報がない場合）
+              content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+                  + " server";
+            }
 
             if (messageId != null) {
               // 既存メッセージを編集
