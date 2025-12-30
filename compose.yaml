@@ -141,7 +141,7 @@ services:
       dockerfile: Dockerfile
     container_name: kishax-discord-bot
     depends_on:
-      redis-web:
+      redis-mc:
         condition: service_healthy
     environment:
       # AWS Configuration
@@ -152,8 +152,8 @@ services:
       - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
       - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
       - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
-      # Redis Configuration (Redis #2)
-      - REDIS_URL=${REDIS_URL_DISCORD:-redis://redis-web:6380}
+      # Redis Configuration (Redis #1 - MC用)
+      - REDIS_URL=${REDIS_URL_DISCORD:-redis://redis-mc:6379}
       - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
       - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
       # Discord Configuration
