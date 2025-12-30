@@ -364,7 +364,7 @@ public class RedisMessageProcessor {
             TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
             if (channel != null) {
               channel.sendMessageEmbeds(embed.build()).queue(
-                  message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+                  message -> messageIdManager.putPlayerMessage(playerUuid, message.getId(), content));
             }
           });
     } else {
@@ -381,7 +381,7 @@ public class RedisMessageProcessor {
             TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
             if (channel != null) {
               channel.sendMessageEmbeds(embed.build()).queue(
-                  message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+                  message -> messageIdManager.putPlayerMessage(playerUuid, message.getId(), content));
             }
           });
     }
@@ -435,13 +435,22 @@ public class RedisMessageProcessor {
 
   private void processPlayerMove(String playerName, String playerUuid, String serverName) {
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
+    String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
 
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
-                + " server";
+
+            String content;
+            if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
+              // 既存内容に移動情報を追記
+              content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
+            } else {
+              // 新規メッセージ（Join情報がない場合）
+              content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+                  + " server";
+            }
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -451,14 +460,15 @@ public class RedisMessageProcessor {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
-                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                channel.editMessageEmbedsById(messageId, embed.build()).queue(
+                    success -> messageIdManager.updatePlayerMessageContent(playerUuid, content));
               }
             } else {
               // 新規メッセージ
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
                 channel.sendMessageEmbeds(embed.build()).queue(
-                    message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+                    message -> messageIdManager.putPlayerMessage(playerUuid, message.getId(), content));
               }
             }
           });
@@ -466,8 +476,16 @@ public class RedisMessageProcessor {
       emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
-                + " server";
+
+            String content;
+            if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
+              // 既存内容に移動情報を追記
+              content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
+            } else {
+              // 新規メッセージ（Join情報がない場合）
+              content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+                  + " server";
+            }
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -477,14 +495,15 @@ public class RedisMessageProcessor {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
-                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                channel.editMessageEmbedsById(messageId, embed.build()).queue(
+                    success -> messageIdManager.updatePlayerMessageContent(playerUuid, content));
               }
             } else {
               // 新規メッセージ
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
                 channel.sendMessageEmbeds(embed.build()).queue(
-                    message -> messageIdManager.putPlayerMessageId(playerUuid, message.getId()));
+                    message -> messageIdManager.putPlayerMessage(playerUuid, message.getId(), content));
               }
             }
           });
