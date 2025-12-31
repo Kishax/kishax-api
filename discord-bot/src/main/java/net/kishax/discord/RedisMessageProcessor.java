@@ -371,6 +371,7 @@ public class RedisMessageProcessor {
     // 既存メッセージに"Exit"が含まれている場合 → 新規Join扱い
     if (messageId != null && existingContent != null && existingContent.contains("Exit")) {
       logger.info("Player {} has Exit in existing message, creating new Join message", playerName);
+      messageIdManager.removePlayerMessageId(playerUuid); // 古いメッセージIDを削除
       messageId = null; // 新規作成フラグ
     }
 
