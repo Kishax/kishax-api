@@ -639,12 +639,32 @@ public class RedisMessageProcessor {
     String chatMessage = json.path("message").asText();
 
     String chatMessageId = messageIdManager.getChatMessageId();
+    String existingChatContent = messageIdManager.getChatMessageContent();
 
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
-            String content = "<" + (emojiString != null ? emojiString : "") + playerName + "> " + chatMessage;
+            String newLine = "<" + (emojiString != null ? emojiString + " " : "") + playerName + "> " + chatMessage;
+
+            String content;
+            String finalChatMessageId = chatMessageId;
+            if (chatMessageId != null && existingChatContent != null && !existingChatContent.isEmpty()) {
+              // 既存チャット内容に追記
+              String newContent = existingChatContent + "\n" + newLine;
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = newLine;
+                finalChatMessageId = null; // 強制的に新規メッセージ
+                logger.info("Chat content too long, creating new message");
+              } else {
+                content = newContent;
+              }
+            } else {
+              // 新規メッセージ
+              content = newLine;
+            }
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -652,13 +672,17 @@ public class RedisMessageProcessor {
 
             TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
             if (chatChannel != null) {
-              if (chatMessageId != null) {
+              if (finalChatMessageId != null) {
                 // 既存チャットメッセージを編集
-                chatChannel.editMessageEmbedsById(chatMessageId, embed.build()).queue();
+                chatChannel.editMessageEmbedsById(finalChatMessageId, embed.build()).queue(
+                    success -> messageIdManager.setChatMessageContent(content));
               } else {
                 // 新規チャットメッセージ
                 chatChannel.sendMessageEmbeds(embed.build()).queue(
-                    message -> messageIdManager.setChatMessageId(message.getId()));
+                    message -> {
+                      messageIdManager.setChatMessageId(message.getId());
+                      messageIdManager.setChatMessageContent(content);
+                    });
               }
             }
           });
@@ -666,7 +690,26 @@ public class RedisMessageProcessor {
       emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-            String content = "<" + (emojiString != null ? emojiString : "") + playerName + "> " + chatMessage;
+            String newLine = "<" + (emojiString != null ? emojiString + " " : "") + playerName + "> " + chatMessage;
+
+            String content;
+            String finalChatMessageId = chatMessageId;
+            if (chatMessageId != null && existingChatContent != null && !existingChatContent.isEmpty()) {
+              // 既存チャット内容に追記
+              String newContent = existingChatContent + "\n" + newLine;
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = newLine;
+                finalChatMessageId = null; // 強制的に新規メッセージ
+                logger.info("Chat content too long, creating new message");
+              } else {
+                content = newContent;
+              }
+            } else {
+              // 新規メッセージ
+              content = newLine;
+            }
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -674,13 +717,17 @@ public class RedisMessageProcessor {
 
             TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
             if (chatChannel != null) {
-              if (chatMessageId != null) {
+              if (finalChatMessageId != null) {
                 // 既存チャットメッセージを編集
-                chatChannel.editMessageEmbedsById(chatMessageId, embed.build()).queue();
+                chatChannel.editMessageEmbedsById(finalChatMessageId, embed.build()).queue(
+                    success -> messageIdManager.setChatMessageContent(content));
               } else {
                 // 新規チャットメッセージ
                 chatChannel.sendMessageEmbeds(embed.build()).queue(
-                    message -> messageIdManager.setChatMessageId(message.getId()));
+                    message -> {
+                      messageIdManager.setChatMessageId(message.getId());
+                      messageIdManager.setChatMessageContent(content);
+                    });
               }
             }
           });

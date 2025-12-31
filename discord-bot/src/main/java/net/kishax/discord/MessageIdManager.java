@@ -18,6 +18,9 @@ public class MessageIdManager {
   // チャットメッセージ用のID（1つだけ保持）
   private volatile String chatMessageId = null;
 
+  // チャットメッセージの内容（履歴）
+  private volatile String chatMessageContent = "";
+
   /**
    * プレイヤーメッセージ情報を保持する内部クラス
    */
@@ -149,11 +152,27 @@ public class MessageIdManager {
   }
 
   /**
+   * チャットメッセージ内容を設定
+   */
+  public void setChatMessageContent(String content) {
+    this.chatMessageContent = content != null ? content : "";
+    logger.debug("Set chat message content (length: {})", this.chatMessageContent.length());
+  }
+
+  /**
+   * チャットメッセージ内容を取得
+   */
+  public String getChatMessageContent() {
+    return chatMessageContent;
+  }
+
+  /**
    * チャットメッセージIDをクリア
    */
   public void clearChatMessageId() {
     logger.debug("Be clear chat message id: {}", chatMessageId);
     this.chatMessageId = null;
+    this.chatMessageContent = "";
   }
 
   /**
@@ -162,6 +181,7 @@ public class MessageIdManager {
   public void clear() {
     playerMessages.clear();
     chatMessageId = null;
+    chatMessageContent = "";
     logger.info("All message ids are being clear");
   }
 
