@@ -32,6 +32,7 @@ public class RedisMessageProcessor {
   private static final Logger logger = LoggerFactory.getLogger(RedisMessageProcessor.class);
   private static final String DISCORD_REQUESTS_CHANNEL = "discord_requests";
   private static final String DISCORD_RESPONSES_CHANNEL = "discord_responses";
+  private static final int DISCORD_EMBED_MAX_LENGTH = 4096;
 
   private final JedisPool jedisPool;
   private final JDA jda;
@@ -409,15 +410,30 @@ public class RedisMessageProcessor {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
 
             String content;
+            String finalMessageId = messageId;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に退出情報を追記
-              content = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
+              String newContent = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
 
               // プレイ時間を追加
               if (joinTimestamp != null) {
                 long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
                 String playtime = formatPlaytime(playtimeMillis);
-                content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+                newContent += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+              }
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = exitEmoji + " " + playerName + " exited from " + serverName + " server";
+                if (joinTimestamp != null) {
+                  long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
+                  String playtime = formatPlaytime(playtimeMillis);
+                  content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+                }
+                finalMessageId = null; // 強制的に新規メッセージ
+                logger.info("Content too long for player {}, creating new message", playerName);
+              } else {
+                content = newContent;
               }
             } else {
               // 新規メッセージ（Join情報がない場合）
@@ -425,7 +441,7 @@ public class RedisMessageProcessor {
                   + " server";
             }
 
-            if (messageId != null) {
+            if (finalMessageId != null) {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
@@ -433,8 +449,22 @@ public class RedisMessageProcessor {
                     .setDescription(content)
                     .setColor(ColorUtil.RED.getRGB());
 
-                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
                 messageIdManager.removePlayerMessageId(playerUuid);
+              }
+            } else {
+              // 新規メッセージ
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setDescription(content)
+                    .setColor(ColorUtil.RED.getRGB());
+
+                channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> {
+                      // 新規メッセージを送信後、すぐに削除（Leaveなので）
+                      messageIdManager.removePlayerMessageId(playerUuid);
+                    });
               }
             }
           });
@@ -444,15 +474,30 @@ public class RedisMessageProcessor {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
 
             String content;
+            String finalMessageId = messageId;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に退出情報を追記
-              content = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
+              String newContent = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
 
               // プレイ時間を追加
               if (joinTimestamp != null) {
                 long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
                 String playtime = formatPlaytime(playtimeMillis);
-                content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+                newContent += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+              }
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = exitEmoji + " " + playerName + " exited from " + serverName + " server";
+                if (joinTimestamp != null) {
+                  long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
+                  String playtime = formatPlaytime(playtimeMillis);
+                  content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+                }
+                finalMessageId = null; // 強制的に新規メッセージ
+                logger.info("Content too long for player {}, creating new message", playerName);
+              } else {
+                content = newContent;
               }
             } else {
               // 新規メッセージ（Join情報がない場合）
@@ -460,7 +505,7 @@ public class RedisMessageProcessor {
                   + " server";
             }
 
-            if (messageId != null) {
+            if (finalMessageId != null) {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
@@ -468,8 +513,22 @@ public class RedisMessageProcessor {
                     .setDescription(content)
                     .setColor(ColorUtil.RED.getRGB());
 
-                channel.editMessageEmbedsById(messageId, embed.build()).queue();
+                channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
                 messageIdManager.removePlayerMessageId(playerUuid);
+              }
+            } else {
+              // 新規メッセージ
+              TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
+              if (channel != null) {
+                EmbedBuilder embed = new EmbedBuilder()
+                    .setDescription(content)
+                    .setColor(ColorUtil.RED.getRGB());
+
+                channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> {
+                      // 新規メッセージを送信後、すぐに削除（Leaveなので）
+                      messageIdManager.removePlayerMessageId(playerUuid);
+                    });
               }
             }
           });
@@ -487,9 +546,19 @@ public class RedisMessageProcessor {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
 
             String content;
+            String finalMessageId = messageId;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に移動情報を追記
-              content = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
+              String newContent = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = moveEmoji + " " + playerName + " moved to " + serverName + " server";
+                finalMessageId = null; // 強制的に新規メッセージ
+                logger.info("Content too long for player {}, creating new message", playerName);
+              } else {
+                content = newContent;
+              }
             } else {
               // 新規メッセージ（Join情報がない場合）
               content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
@@ -500,11 +569,11 @@ public class RedisMessageProcessor {
                 .setDescription(content)
                 .setColor(ColorUtil.BLUE.getRGB());
 
-            if (messageId != null) {
+            if (finalMessageId != null) {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
-                channel.editMessageEmbedsById(messageId, embed.build()).queue(
+                channel.editMessageEmbedsById(finalMessageId, embed.build()).queue(
                     success -> messageIdManager.updatePlayerMessageContent(playerUuid, content));
               }
             } else {
@@ -522,9 +591,19 @@ public class RedisMessageProcessor {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
 
             String content;
+            String finalMessageId = messageId;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に移動情報を追記
-              content = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
+              String newContent = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
+
+              // 文字数チェック：4096文字超過の場合は新規メッセージとして送信
+              if (isContentTooLong(newContent)) {
+                content = moveEmoji + " " + playerName + " moved to " + serverName + " server";
+                finalMessageId = null; // 強制的に新規メッセージ
+                logger.info("Content too long for player {}, creating new message", playerName);
+              } else {
+                content = newContent;
+              }
             } else {
               // 新規メッセージ（Join情報がない場合）
               content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
@@ -535,11 +614,11 @@ public class RedisMessageProcessor {
                 .setDescription(content)
                 .setColor(ColorUtil.BLUE.getRGB());
 
-            if (messageId != null) {
+            if (finalMessageId != null) {
               // 既存メッセージを編集
               TextChannel channel = jda.getTextChannelById(config.getDiscordChannelId());
               if (channel != null) {
-                channel.editMessageEmbedsById(messageId, embed.build()).queue(
+                channel.editMessageEmbedsById(finalMessageId, embed.build()).queue(
                     success -> messageIdManager.updatePlayerMessageContent(playerUuid, content));
               }
             } else {
@@ -663,6 +742,13 @@ public class RedisMessageProcessor {
       logger.warn("Failed to get custom emoji: {}", emojiName, e);
     }
     return "";
+  }
+
+  /**
+   * コンテンツの文字数がDiscordの制限を超えているかチェック
+   */
+  private boolean isContentTooLong(String content) {
+    return content != null && content.length() > DISCORD_EMBED_MAX_LENGTH;
   }
 
   /**
