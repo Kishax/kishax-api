@@ -80,11 +80,24 @@ public class MessageIdManager {
 
   /**
    * プレイヤーのメッセージIDと内容を保存
+   * 既存のPlayerMessageInfoが存在する場合、Exit時刻を保持したまま更新
    */
   public void putPlayerMessage(String uuid, String messageId, String content) {
     if (uuid != null && messageId != null) {
-      playerMessages.put(uuid, new PlayerMessageInfo(messageId, content != null ? content : "", System.currentTimeMillis()));
-      logger.debug("Player message is saved: {} -> {} (content length: {})", uuid, messageId, content != null ? content.length() : 0);
+      PlayerMessageInfo existingInfo = playerMessages.get(uuid);
+
+      if (existingInfo != null && existingInfo.getExitTimestamp() > 0) {
+        // Exit時刻が記録されている場合は保持する（再Join時のMove処理判定用）
+        PlayerMessageInfo newInfo = new PlayerMessageInfo(messageId, content != null ? content : "", System.currentTimeMillis());
+        newInfo.setExitTimestamp(existingInfo.getExitTimestamp());
+        playerMessages.put(uuid, newInfo);
+        logger.debug("Player message is saved (preserving exit timestamp: {}): {} -> {} (content length: {})",
+                     existingInfo.getExitTimestamp(), uuid, messageId, content != null ? content.length() : 0);
+      } else {
+        // Exit時刻がない場合は新規作成
+        playerMessages.put(uuid, new PlayerMessageInfo(messageId, content != null ? content : "", System.currentTimeMillis()));
+        logger.debug("Player message is saved: {} -> {} (content length: {})", uuid, messageId, content != null ? content.length() : 0);
+      }
     }
   }
 
