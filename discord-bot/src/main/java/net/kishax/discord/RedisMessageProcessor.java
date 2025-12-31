@@ -360,6 +360,17 @@ public class RedisMessageProcessor {
     String joinTime = formatJapanTime(joinTimestamp);
     String joinEmoji = getCustomEmoji("join");
 
+    // 再Join判定: Exit時刻が記録されている場合はMove処理として扱う
+    String messageId = messageIdManager.getPlayerMessageId(playerUuid);
+    Long exitTimestamp = messageIdManager.getPlayerExitTimestamp(playerUuid);
+
+    if (messageId != null && exitTimestamp != null && exitTimestamp > 0) {
+      // Exit時刻が存在する = 再Join → Move処理として既存メッセージを更新
+      logger.info("Player {} re-joined after exit, treating as move to {}", playerName, serverName);
+      processPlayerMove(playerName, playerUuid, serverName);
+      return;
+    }
+
     // test-uuidなど無効なUUIDの場合はデフォルト絵文字を使用
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
@@ -450,8 +461,11 @@ public class RedisMessageProcessor {
                     .setDescription(content)
                     .setColor(ColorUtil.RED.getRGB());
 
+                // Exit時刻を記録（再Join時のMove処理判定用）
+                messageIdManager.setPlayerExitTimestamp(playerUuid, System.currentTimeMillis());
+
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
-                messageIdManager.removePlayerMessageId(playerUuid);
+                // メッセージIDは削除せず保持（再Join時にMove処理するため）
               }
             } else {
               // 新規メッセージ
@@ -514,8 +528,11 @@ public class RedisMessageProcessor {
                     .setDescription(content)
                     .setColor(ColorUtil.RED.getRGB());
 
+                // Exit時刻を記録（再Join時のMove処理判定用）
+                messageIdManager.setPlayerExitTimestamp(playerUuid, System.currentTimeMillis());
+
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
-                messageIdManager.removePlayerMessageId(playerUuid);
+                // メッセージIDは削除せず保持（再Join時にMove処理するため）
               }
             } else {
               // 新規メッセージ

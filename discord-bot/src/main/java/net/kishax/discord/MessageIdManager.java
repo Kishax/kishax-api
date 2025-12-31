@@ -31,11 +31,13 @@ public class MessageIdManager {
     private final String messageId;
     private String content;
     private final long joinTimestamp;
+    private long exitTimestamp;
 
     public PlayerMessageInfo(String messageId, String content, long joinTimestamp) {
       this.messageId = messageId;
       this.content = content;
       this.joinTimestamp = joinTimestamp;
+      this.exitTimestamp = 0L;
     }
 
     public String getMessageId() {
@@ -52,6 +54,14 @@ public class MessageIdManager {
 
     public long getJoinTimestamp() {
       return joinTimestamp;
+    }
+
+    public long getExitTimestamp() {
+      return exitTimestamp;
+    }
+
+    public void setExitTimestamp(long exitTimestamp) {
+      this.exitTimestamp = exitTimestamp;
     }
   }
 
@@ -120,6 +130,33 @@ public class MessageIdManager {
       if (info != null) {
         info.setContent(content);
         logger.debug("Updated player message content: {} (length: {})", uuid, content != null ? content.length() : 0);
+      }
+    }
+  }
+
+  /**
+   * プレイヤーのExit時刻を取得
+   */
+  public Long getPlayerExitTimestamp(String uuid) {
+    if (uuid == null) {
+      return null;
+    }
+    PlayerMessageInfo info = playerMessages.get(uuid);
+    if (info != null && info.getExitTimestamp() > 0) {
+      return info.getExitTimestamp();
+    }
+    return null;
+  }
+
+  /**
+   * プレイヤーのExit時刻を記録
+   */
+  public void setPlayerExitTimestamp(String uuid, long exitTimestamp) {
+    if (uuid != null) {
+      PlayerMessageInfo info = playerMessages.get(uuid);
+      if (info != null) {
+        info.setExitTimestamp(exitTimestamp);
+        logger.debug("Set player exit timestamp: {} (timestamp: {})", uuid, exitTimestamp);
       }
     }
   }
