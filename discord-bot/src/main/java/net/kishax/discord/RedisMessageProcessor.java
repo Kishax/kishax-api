@@ -468,7 +468,10 @@ public class RedisMessageProcessor {
                     .setColor(ColorUtil.RED.getRGB());
 
                 // Exit時刻を記録（再Join時のMove処理判定用）
-                messageIdManager.setPlayerExitTimestamp(playerUuid, System.currentTimeMillis());
+                long exitTs = System.currentTimeMillis();
+                messageIdManager.setPlayerExitTimestamp(playerUuid, exitTs);
+                logger.info("DEBUG processPlayerLeave (BE): player={}, messageId={}, setExitTimestamp={}, getExitTimestamp={}",
+                            playerName, finalMessageId, exitTs, messageIdManager.getPlayerExitTimestamp(playerUuid));
 
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
                 // メッセージIDは削除せず保持（再Join時にMove処理するため）
@@ -535,7 +538,10 @@ public class RedisMessageProcessor {
                     .setColor(ColorUtil.RED.getRGB());
 
                 // Exit時刻を記録（再Join時のMove処理判定用）
-                messageIdManager.setPlayerExitTimestamp(playerUuid, System.currentTimeMillis());
+                long exitTs = System.currentTimeMillis();
+                messageIdManager.setPlayerExitTimestamp(playerUuid, exitTs);
+                logger.info("DEBUG processPlayerLeave (Java): player={}, messageId={}, setExitTimestamp={}, getExitTimestamp={}",
+                            playerName, finalMessageId, exitTs, messageIdManager.getPlayerExitTimestamp(playerUuid));
 
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
                 // メッセージIDは削除せず保持（再Join時にMove処理するため）
