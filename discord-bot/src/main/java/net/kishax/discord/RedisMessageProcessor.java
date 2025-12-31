@@ -479,6 +479,7 @@ public class RedisMessageProcessor {
   private void processPlayerMove(String playerName, String playerUuid, String serverName) {
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
     String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
+    String moveEmoji = getCustomEmoji("move");
 
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
@@ -488,7 +489,7 @@ public class RedisMessageProcessor {
             String content;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に移動情報を追記
-              content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
+              content = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
             } else {
               // 新規メッセージ（Join情報がない場合）
               content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
@@ -523,7 +524,7 @@ public class RedisMessageProcessor {
             String content;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に移動情報を追記
-              content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
+              content = existingContent + "\n\n" + moveEmoji + " Moved to " + serverName + " server";
             } else {
               // 新規メッセージ（Join情報がない場合）
               content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
