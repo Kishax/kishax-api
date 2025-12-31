@@ -364,22 +364,24 @@ public class RedisMessageProcessor {
     String joinTime = formatJapanTime(joinTimestamp);
     String joinEmoji = getCustomEmoji("join");
 
-    // 再Join判定: Exit時刻が記録されている場合はMove処理として扱う
+    // 既存のメッセージIDとメッセージ内容を取得
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
-    Long exitTimestamp = messageIdManager.getPlayerExitTimestamp(playerUuid);
+    String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
 
-    // デバッグログ: 再Join判定の状態を出力
-    logger.info("DEBUG processPlayerJoin: player={}, messageId={}, exitTimestamp={}",
-                playerName, messageId, exitTimestamp);
+    // 既存メッセージに"Exit"が含まれている場合 → 新規Join扱い
+    if (messageId != null && existingContent != null && existingContent.contains("Exit")) {
+      logger.info("Player {} has Exit in existing message, creating new Join message", playerName);
+      messageId = null; // 新規作成フラグ
+    }
 
-    if (messageId != null && exitTimestamp != null && exitTimestamp > 0) {
-      // Exit時刻が存在する = 再Join → Move処理として既存メッセージを更新
-      logger.info("Player {} re-joined after exit, treating as move to {}", playerName, serverName);
+    // 既存メッセージIDがある場合 → Move処理
+    if (messageId != null) {
+      logger.info("Player {} re-joined, treating as move to {}", playerName, serverName);
       processPlayerMove(playerName, playerUuid, serverName);
       return;
     }
 
-    logger.info("DEBUG: Processing as new Join (not re-join)");
+    logger.info("Processing as new Join for player {}", playerName);
 
     // test-uuidなど無効なUUIDの場合はデフォルト絵文字を使用
     if (isInvalidUuid(playerUuid)) {
