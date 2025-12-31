@@ -1,8 +1,10 @@
 package net.kishax.discord;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -15,6 +17,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Discord イベントリスナー
@@ -134,7 +138,18 @@ public class DiscordEventListener extends ListenerAdapter {
     String authorId = event.getAuthor().getId();
     String content = event.getMessage().getContentDisplay();
 
-    logger.info("Discord message received for MC broadcast: author={}, content={}", author, content);
+    // 画像添付のチェック
+    List<Message.Attachment> attachments = event.getMessage().getAttachments();
+    List<String> imageUrls = new ArrayList<>();
+
+    for (Message.Attachment attachment : attachments) {
+      if (attachment.isImage()) {
+        imageUrls.add(attachment.getUrl());
+      }
+    }
+
+    logger.info("Discord message received for MC broadcast: author={}, content={}, images={}",
+                author, content, imageUrls.size());
 
     try {
       // JSONメッセージ作成
@@ -144,6 +159,16 @@ public class DiscordEventListener extends ListenerAdapter {
       messageJson.put("authorId", authorId);
       messageJson.put("content", content);
       messageJson.put("timestamp", Instant.now().toString());
+      messageJson.put("hasImages", !imageUrls.isEmpty());
+
+      // 画像URLを配列として追加
+      if (!imageUrls.isEmpty()) {
+        ArrayNode urlsArray = objectMapper.createArrayNode();
+        for (String url : imageUrls) {
+          urlsArray.add(url);
+        }
+        messageJson.set("imageUrls", urlsArray);
+      }
 
       // Redisにパブリッシュ
       try (Jedis jedis = jedisPool.getResource()) {
