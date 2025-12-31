@@ -480,6 +480,7 @@ public class RedisMessageProcessor {
                             playerName, finalMessageId, exitTs, messageIdManager.getPlayerExitTimestamp(playerUuid));
 
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
+                messageIdManager.updatePlayerMessageContent(playerUuid, content);
                 // メッセージIDは削除せず保持（再Join時にMove処理するため）
               }
             } else {
@@ -550,6 +551,7 @@ public class RedisMessageProcessor {
                             playerName, finalMessageId, exitTs, messageIdManager.getPlayerExitTimestamp(playerUuid));
 
                 channel.editMessageEmbedsById(finalMessageId, embed.build()).queue();
+                messageIdManager.updatePlayerMessageContent(playerUuid, content);
                 // メッセージIDは削除せず保持（再Join時にMove処理するため）
               }
             } else {
