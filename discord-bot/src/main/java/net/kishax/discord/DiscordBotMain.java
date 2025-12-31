@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.JedisPool;
 
 /**
  * Discord Bot メインクラス
@@ -19,6 +20,7 @@ public class DiscordBotMain {
   private RedisMessageProcessor redisProcessor;
   private EmojiManager emojiManager;
   private MessageIdManager messageIdManager;
+  private JedisPool jedisPool;
 
   public static void main(String[] args) {
     new DiscordBotMain().start();
@@ -31,6 +33,14 @@ public class DiscordBotMain {
       // 設定読み込み
       config = new Configuration();
 
+      // Redis接続初期化
+      String redisUrl = config.getRedisUrl();
+      if (redisUrl == null || redisUrl.isEmpty()) {
+        throw new IllegalArgumentException("Redis URL is required for this discord-bot version");
+      }
+      jedisPool = new JedisPool(redisUrl);
+      logger.info("Redis connection initialized: {}", redisUrl);
+
       // Discord Bot初期化
       initDiscordBot();
 
@@ -39,14 +49,9 @@ public class DiscordBotMain {
       messageIdManager = new MessageIdManager();
 
       // Redis使用モードでのみ動作
-      String redisUrl = config.getRedisUrl();
-      if (redisUrl != null && !redisUrl.isEmpty()) {
-        logger.info("Starting sqs message processer with redis-connection mode...");
-        redisProcessor = new RedisMessageProcessor(redisUrl, jda, config, emojiManager, messageIdManager);
-        redisProcessor.start();
-      } else {
-        throw new IllegalArgumentException("Redis URL is required for this discord-bot version");
-      }
+      logger.info("Starting sqs message processer with redis-connection mode...");
+      redisProcessor = new RedisMessageProcessor(redisUrl, jda, config, emojiManager, messageIdManager);
+      redisProcessor.start();
 
       logger.info("Discord Bot is running.");
 
@@ -67,7 +72,7 @@ public class DiscordBotMain {
 
     jda = JDABuilder.createDefault(token)
         .enableIntents(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT)
-        .addEventListeners(new DiscordEventListener(config))
+        .addEventListeners(new DiscordEventListener(config, jedisPool))
         .build();
 
     jda.awaitReady();
@@ -85,6 +90,10 @@ public class DiscordBotMain {
       redisProcessor.stop();
     }
 
+    if (jedisPool != null && !jedisPool.isClosed()) {
+      jedisPool.close();
+      logger.info("JedisPool closed");
+    }
 
     if (jda != null) {
       jda.shutdown();

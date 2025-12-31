@@ -1,13 +1,20 @@
 package net.kishax.discord;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.events.session.ReadyEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.kishax.api.common.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+
+import java.time.Instant;
 
 /**
  * Discord イベントリスナー
@@ -15,11 +22,16 @@ import org.slf4j.LoggerFactory;
  */
 public class DiscordEventListener extends ListenerAdapter {
   private static final Logger logger = LoggerFactory.getLogger(DiscordEventListener.class);
+  private static final String MC_BROADCAST_CHANNEL = "mc_broadcast";
 
   private final Configuration config;
+  private final JedisPool jedisPool;
+  private final ObjectMapper objectMapper;
 
-  public DiscordEventListener(Configuration config) {
+  public DiscordEventListener(Configuration config, JedisPool jedisPool) {
     this.config = config;
+    this.jedisPool = jedisPool;
+    this.objectMapper = new ObjectMapper();
   }
 
   @Override
@@ -102,5 +114,44 @@ public class DiscordEventListener extends ListenerAdapter {
     logger.info("Request rejected person: user={}", event.getUser().getName());
 
     // TODO: 実際の拒否処理を実装
+  }
+
+  @Override
+  public void onMessageReceived(MessageReceivedEvent event) {
+    // Botメッセージは無視（無限ループ防止）
+    if (event.getAuthor().isBot()) {
+      return;
+    }
+
+    // DISCORD_CHAT_CHANNEL_IDのメッセージのみ処理
+    String chatChannelId = config.getDiscordChatChannelId();
+    if (chatChannelId == null || !event.getChannel().getId().equals(chatChannelId)) {
+      return;
+    }
+
+    // Discord→MC ブロードキャストメッセージを作成
+    String author = event.getAuthor().getName();
+    String authorId = event.getAuthor().getId();
+    String content = event.getMessage().getContentDisplay();
+
+    logger.info("Discord message received for MC broadcast: author={}, content={}", author, content);
+
+    try {
+      // JSONメッセージ作成
+      ObjectNode messageJson = objectMapper.createObjectNode();
+      messageJson.put("type", "discord_broadcast");
+      messageJson.put("author", author);
+      messageJson.put("authorId", authorId);
+      messageJson.put("content", content);
+      messageJson.put("timestamp", Instant.now().toString());
+
+      // Redisにパブリッシュ
+      try (Jedis jedis = jedisPool.getResource()) {
+        jedis.publish(MC_BROADCAST_CHANNEL, messageJson.toString());
+        logger.info("Published Discord message to Redis channel: {}", MC_BROADCAST_CHANNEL);
+      }
+    } catch (Exception e) {
+      logger.error("Failed to publish Discord message to Redis", e);
+    }
   }
 }
