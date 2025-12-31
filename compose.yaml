@@ -1,85 +1,95 @@
 services:
-  # Redis for pub/sub communication between Java and TypeScript
-  redis:
+  # Redis #1: MC Server用
+  redis-mc:
     image: redis:7-alpine
-    container_name: kishax-api-redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-    profiles:
-      - test
-
-  # LocalStack for AWS services emulation (SQS, etc.)
-  localstack:
-    image: localstack/localstack:3.0
-    container_name: kishax-localstack
+    container_name: kishax-redis-mc
+    command: >
+      redis-server
+      --port 6379
+      --bind 0.0.0.0
+      --protected-mode no
+      --appendonly yes
+      --appendfilename "appendonly-mc.aof"
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
     ports:
-      - "4566:4566" # LocalStack gateway
-      - "4510-4559:4510-4559" # External services port range
-    environment:
-      - SERVICES=sqs,s3,cloudformation,iam
-      - DEBUG=1
-      - DATA_DIR=/tmp/localstack/data
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - AWS_DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      - "6379:6379"
     volumes:
-      - "./tmp/localstack:/tmp/localstack"
-      - "/var/run/docker.sock:/var/run/docker.sock"
+      - redis_mc_data:/data
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 10s
-      timeout: 3s
+      timeout: 5s
       retries: 5
-    profiles:
-      - test
 
-  # Test runner service (for running integration tests)
-  test-runner:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    container_name: kishax-test-runner
-    depends_on:
-      redis:
-        condition: service_healthy
-      localstack:
-        condition: service_healthy
-    environment:
-      # LocalStack configuration
-      - AWS_ENDPOINT_URL=http://localstack:4566
-      - AWS_DEFAULT_REGION=ap-northeast-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
-      # Redis configuration
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      # Application configuration (New naming)
-      - TO_WEB_QUEUE_URL=http://localstack:4566/000000000000/to-web-queue
-      - TO_MC_QUEUE_URL=http://localstack:4566/000000000000/to-mc-queue
-      - TO_DISCORD_QUEUE_URL=http://localstack:4566/000000000000/to-discord-queue
-      - MC_WEB_SQS_ACCESS_KEY_ID=test
-      - MC_WEB_SQS_SECRET_ACCESS_KEY=test
-      - LOG_LEVEL=DEBUG
-      # Integration test flag
-      - RUN_INTEGRATION_TESTS=true
+  # Redis #2: Web + Discord用
+  redis-web:
+    image: redis:7-alpine
+    container_name: kishax-redis-web
+    command: >
+      redis-server
+      --port 6380
+      --bind 0.0.0.0
+      --protected-mode no
+      --appendonly yes
+      --appendfilename "appendonly-web.aof"
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6380:6380"
     volumes:
-      - .:/app
-    working_dir: /app
-    profiles:
-      - test
+      - redis_web_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # SQS Redis Bridge Service
-  sqs-redis-bridge:
+  # SQS Redis Bridge Service - MC用 (Redis #1)
+  # NOTE: Disabled - MC Server (Velocity) runs its own SqsWorker internally
+  # sqs-redis-bridge-mc:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.sqs-redis-bridge
+  #   container_name: kishax-sqs-redis-bridge-mc
+  #   depends_on:
+  #     redis-mc:
+  #       condition: service_healthy
+  #   environment:
+  #     - ENVIRONMENT=production
+  #     # AWS Configuration
+  #     - AWS_REGION=${AWS_REGION:-ap-northeast-1}
+  #     - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
+  #     - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
+  #     - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
+  #     - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
+  #     - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
+  #     # Redis Configuration (Redis #1 - MC用)
+  #     - REDIS_URL=redis://redis-mc:6379
+  #     - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
+  #     - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
+  #     # Queue Configuration
+  #     - QUEUE_MODE=MC
+  #     - SQS_WORKER_ENABLED=true
+  #     - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-5}
+  #     - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
+  #     - SQS_WORKER_WAIT_TIME_SECONDS=${SQS_WORKER_WAIT_TIME_SECONDS:-20}
+  #     - SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS=${SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS:-30}
+  #     # Logging Configuration
+  #     - LOG_LEVEL=${LOG_LEVEL:-INFO}
+  #   restart: unless-stopped
+
+  # SQS Redis Bridge Service - Web用 (Redis #2)
+  sqs-redis-bridge-web:
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: kishax-sqs-redis-bridge
+      dockerfile: Dockerfile.sqs-redis-bridge
+    container_name: kishax-sqs-redis-bridge-web
+    depends_on:
+      redis-web:
+        condition: service_healthy
     environment:
       - ENVIRONMENT=production
       # AWS Configuration
@@ -89,27 +99,26 @@ services:
       - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
       - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
       - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
-      # Redis Configuration
-      - REDIS_URL=${REDIS_URL:-redis://host.docker.internal:6379}
+      # Redis Configuration (Redis #2 - Web用)
+      - REDIS_URL=redis://redis-web:6380
       - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
       - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
       # Queue Configuration
-      - QUEUE_MODE=${QUEUE_MODE:-WEB}
+      - QUEUE_MODE=WEB
       - SQS_WORKER_ENABLED=true
-      - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-5}
+      - SQS_WORKER_POLLING_INTERVAL_SECONDS=${SQS_WORKER_POLLING_INTERVAL_SECONDS:-2}
       - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
       - SQS_WORKER_WAIT_TIME_SECONDS=${SQS_WORKER_WAIT_TIME_SECONDS:-20}
       - SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS=${SQS_WORKER_VISIBILITY_TIMEOUT_SECONDS:-30}
       # Logging Configuration
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    command: ["java", "-jar", "/app/sqs-redis-bridge.jar"]
     restart: unless-stopped
 
   # MC Authentication Service
   mc-auth:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.mc-auth
     container_name: kishax-mc-auth
     ports:
       - "8080:8080"
@@ -118,13 +127,59 @@ services:
       # Authentication API Configuration
       - AUTH_API_ENABLED=true
       - AUTH_API_PORT=8080
-      - AUTH_API_KEY=${AUTH_API_KEY:-local-dev-api-key}
-      # Database Configuration
-      - DATABASE_URL=${DATABASE_URL:-jdbc:postgresql://host.docker.internal:5432/kishax_db?user=postgres&password=postgres}
+      - AUTH_API_KEY=${AUTH_API_KEY}
+      # Database Configuration (RDS PostgreSQL)
+      - DATABASE_URL=${DATABASE_URL}
       # Logging Configuration
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    command: ["java", "-jar", "/app/mc-auth.jar"]
+    restart: unless-stopped
+
+  # Discord Bot Service
+  discord-bot:
+    build:
+      context: ./discord-bot
+      dockerfile: Dockerfile
+    container_name: kishax-discord-bot
+    depends_on:
+      redis-mc:
+        condition: service_healthy
+    environment:
+      # AWS Configuration
+      - AWS_REGION=${AWS_REGION}
+      - MC_WEB_SQS_ACCESS_KEY_ID=${MC_WEB_SQS_ACCESS_KEY_ID}
+      - MC_WEB_SQS_SECRET_ACCESS_KEY=${MC_WEB_SQS_SECRET_ACCESS_KEY}
+      # SQS Queue URLs
+      - TO_WEB_QUEUE_URL=${TO_WEB_QUEUE_URL}
+      - TO_MC_QUEUE_URL=${TO_MC_QUEUE_URL}
+      - TO_DISCORD_QUEUE_URL=${TO_DISCORD_QUEUE_URL}
+      # Redis Configuration (Redis #1 - MC用)
+      - REDIS_URL=${REDIS_URL_DISCORD:-redis://redis-mc:6379}
+      - REDIS_CONNECTION_TIMEOUT=${REDIS_CONNECTION_TIMEOUT:-5000}
+      - REDIS_COMMAND_TIMEOUT=${REDIS_COMMAND_TIMEOUT:-3000}
+      # Discord Configuration
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_CHANNEL_ID=${DISCORD_CHANNEL_ID}
+      - DISCORD_CHAT_CHANNEL_ID=${DISCORD_CHAT_CHANNEL_ID}
+      - DISCORD_ADMIN_CHANNEL_ID=${DISCORD_ADMIN_CHANNEL_ID}
+      - DISCORD_RULE_CHANNEL_ID=${DISCORD_RULE_CHANNEL_ID}
+      - DISCORD_RULE_MESSAGE_ID=${DISCORD_RULE_MESSAGE_ID}
+      - DISCORD_PRESENCE_ACTIVITY=${DISCORD_PRESENCE_ACTIVITY:-Kishaxサーバー}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - BE_DEFAULT_EMOJI_NAME=${BE_DEFAULT_EMOJI_NAME:-steve}
+      # SQS Configuration for Discord
+      - AWS_SQS_MAX_MESSAGES=${AWS_SQS_MAX_MESSAGES:-10}
+      - AWS_SQS_WAIT_TIME_SECONDS=${AWS_SQS_WAIT_TIME_SECONDS:-20}
+      # Queue Mode Configuration
+      - QUEUE_MODE=${QUEUE_MODE:-DISCORD}
+      - SQS_WORKER_ENABLED=${SQS_WORKER_ENABLED:-false}
+      - SQS_WORKER_POLLING_INTERVAL=${SQS_WORKER_POLLING_INTERVAL:-5}
+      - SQS_WORKER_MAX_MESSAGES=${SQS_WORKER_MAX_MESSAGES:-10}
+      - SQS_WORKER_WAIT_TIME=${SQS_WORKER_WAIT_TIME:-20}
+      - SQS_WORKER_VISIBILITY_TIMEOUT=${SQS_WORKER_VISIBILITY_TIMEOUT:-300}
+      # Application Configuration
+      - SHUTDOWN_GRACE_PERIOD=${SHUTDOWN_GRACE_PERIOD:-10}
     restart: unless-stopped
 
 volumes:
-  redis-data:
+  redis_mc_data:
+  redis_web_data:

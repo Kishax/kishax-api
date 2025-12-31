@@ -12,7 +12,8 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 public class SqsWorkerApplication {
   private static final Logger logger = LoggerFactory.getLogger(SqsWorkerApplication.class);
 
-  private SqsWorker sqsWorker;
+  private SqsWorker toMcWorker;  // Web → MC のメッセージを処理
+  private SqsWorker toWebWorker; // MC → Web のレスポンスを処理
   private RedisClient redisClient;
   private SqsClient sqsClient;
   private DiscordResponseHandler discordResponseHandler;
@@ -52,21 +53,47 @@ public class SqsWorkerApplication {
       // Start Discord response subscription
       discordResponseHandler.startSubscription();
 
-      // Create and start SQS Worker
-      this.sqsWorker = new SqsWorker(
-          sqsClient,
-          config.getPollingQueueUrl(),
-          config.getQueueMode(),
-          redisClient,
-          webToMcSender,
-          mcToWebSender,
-          config);
-
       // Set up shutdown hook
       Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
 
-      // Start the worker
-      sqsWorker.start();
+      String queueMode = config.getQueueMode();
+      logger.info("🔧 Queue mode: {}", queueMode);
+
+      // WEB mode: Poll to-web queue + Subscribe to Redis Pub/Sub
+      // MC mode: Poll to-mc queue
+      if ("WEB".equalsIgnoreCase(queueMode)) {
+        logger.info("🌐 Starting WEB mode: Polling to-web queue + Redis Pub/Sub subscription");
+        
+        // Single worker for WEB mode:
+        // - Polls to-web queue (MC → Web responses)
+        // - Subscribes to Redis Pub/Sub web_to_mc (Web → MC messages)
+        this.toMcWorker = new SqsWorker(
+            sqsClient,
+            config.getToWebQueueUrl(),  // Poll to-web queue (MC → Web)
+            queueMode,  // WEB mode - will subscribe to Redis
+            redisClient,
+            webToMcSender,
+            mcToWebSender,
+            config);
+        toMcWorker.start();
+        logger.info("✅ WEB Worker started:");
+        logger.info("   📥 Polling to-web queue for MC responses");
+        logger.info("   📡 Subscribed to Redis Pub/Sub for Web messages");
+
+      } else {
+        // MC mode: Only process to-web queue
+        logger.info("🎮 Starting MC mode with single SQS worker...");
+        this.toMcWorker = new SqsWorker(
+            sqsClient,
+            config.getPollingQueueUrl(),
+            queueMode,
+            redisClient,
+            webToMcSender,
+            mcToWebSender,
+            config);
+        toMcWorker.start();
+        logger.info("✅ Worker started: Polling {} queue", config.getPollingQueueUrl());
+      }
 
       logger.info("✅ SQS-Redis Bridge started successfully");
 
@@ -86,9 +113,14 @@ public class SqsWorkerApplication {
     logger.info("🔄 Received shutdown signal, shutting down gracefully...");
 
     try {
-      if (sqsWorker != null) {
-        sqsWorker.stop();
+      if (toMcWorker != null) {
+        toMcWorker.stop();
         logger.info("✅ SQS Worker stopped");
+      }
+
+      if (toWebWorker != null) {
+        toWebWorker.stop();
+        logger.info("✅ Additional Worker stopped");
       }
 
       if (redisClient != null) {

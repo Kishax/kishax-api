@@ -43,6 +43,7 @@ public class SqsWorker {
   // Callback for OTP display integration
   private static OtpDisplayCallback otpDisplayCallback;
   private static AuthConfirmCallback authConfirmCallback;
+  private static AuthTokenSavedCallback authTokenSavedCallback;
 
   /**
    * Interface for OTP display callback
@@ -59,6 +60,13 @@ public class SqsWorker {
   }
 
   /**
+   * Interface for auth token saved callback
+   */
+  public interface AuthTokenSavedCallback {
+    void onAuthTokenSaved(String mcid, String uuid, String authToken);
+  }
+
+  /**
    * Set the OTP display callback
    */
   public static void setOtpDisplayCallback(OtpDisplayCallback callback) {
@@ -70,6 +78,13 @@ public class SqsWorker {
    */
   public static void setAuthConfirmCallback(AuthConfirmCallback callback) {
     authConfirmCallback = callback;
+  }
+
+  /**
+   * Set the Auth Token Saved callback
+   */
+  public static void setAuthTokenSavedCallback(AuthTokenSavedCallback callback) {
+    authTokenSavedCallback = callback;
   }
 
   public SqsWorker(SqsClient sqsClient, String queueUrl, String queueMode, RedisClient redisClient,
@@ -199,7 +214,7 @@ public class SqsWorker {
     }
 
     try {
-      System.out.println("SQS Worker: Polling for messages...");
+      // System.out.println("SQS Worker: Polling for messages...");  // ログ圧迫防止のためコメントアウト
 
       // Poll from primary queue
       List<Message> primaryMessages = pollFromQueue(queueUrl);
@@ -229,7 +244,7 @@ public class SqsWorker {
           processMessage(message);
         }
       } else {
-        System.out.println("SQS Worker: No messages received");
+        // System.out.println("SQS Worker: No messages received");  // ログ圧迫防止のためコメントアウト
       }
     } catch (Exception error) {
       logger.error("❌ Error polling SQS messages: {}", error.getMessage(), error);
@@ -309,6 +324,11 @@ public class SqsWorker {
           handleWebMcAuthConfirmMessage(messageData);
           deleteMessage(message);
           logger.info("✅ Web MC Auth Confirm message processed and deleted successfully");
+        }
+        case "mc_auth_token_saved" -> {
+          handleAuthTokenSavedMessage(messageData);
+          deleteMessage(message);
+          logger.info("✅ MC Auth Token Saved message processed and deleted successfully");
         }
         case "player_event" -> {
           handleDiscordPlayerEventMessage(messageData);
@@ -542,6 +562,34 @@ public class SqsWorker {
   }
 
   /**
+   * Send auth token saved notification to MC
+   */
+  public void sendAuthTokenSavedToMc(String mcid, String uuid, String authToken) {
+    // MC mode: Use callback (VelocitySqsMessageHandler)
+    if ("MC".equalsIgnoreCase(queueMode)) {
+      // MC側ではSqsMessageHandlerのコールバックを使用
+      if (authTokenSavedCallback != null) {
+        try {
+          authTokenSavedCallback.onAuthTokenSaved(mcid, uuid, authToken);
+          logger.info("📤 Auth token saved notification sent via callback for player: {}", mcid);
+        } catch (Exception e) {
+          logger.error("❌ Auth token saved callback failed for player: {} ({})", mcid, uuid, e);
+        }
+      } else {
+        logger.warn("⚠️ No auth token saved callback registered in MC mode.");
+      }
+    } else {
+      // WEB mode: Forward to MC via SQS
+      if (webToMcSender != null) {
+        webToMcSender.sendAuthTokenSaved(mcid, uuid, authToken);
+        logger.info("📤 Auth token saved notification sent to MC for player: {}", mcid);
+      } else {
+        logger.warn("⚠️ WebToMcMessageSender not available - cannot send auth token saved notification");
+      }
+    }
+  }
+
+  /**
    * Send command to MC
    */
   public void sendCommandToMc(String commandType, String playerName, Object data) {
@@ -629,8 +677,12 @@ public class SqsWorker {
           handleAuthCompletionMessage(data);
           logger.info("✅ Auth completion message from Redis processed successfully");
         }
+        case "mc_auth_token_saved" -> {
+          handleAuthTokenSavedMessage(data);
+          logger.info("✅ Auth token saved message from Redis processed successfully");
+        }
         default -> {
-          logger.warn("! Unknown Redis message type: {}", messageType);
+          logger.warn("❗ Unknown Redis message type: {}", messageType);
         }
       }
     } catch (Exception error) {
@@ -689,6 +741,18 @@ public class SqsWorker {
 
     logger.info("📋 Processing player request from Redis: {} for player: {}", requestType, playerName);
     sendPlayerRequestToMc(requestType, playerName, requestData);
+  }
+
+  /**
+   * Handle auth token saved message from Redis
+   */
+  private void handleAuthTokenSavedMessage(JsonNode data) {
+    String mcid = data.path("mcid").asText();
+    String uuid = data.path("uuid").asText();
+    String authToken = data.path("authToken").asText();
+
+    logger.info("✅ Processing auth token saved notification for player: {} ({})", mcid, uuid);
+    sendAuthTokenSavedToMc(mcid, uuid, authToken);
   }
 
   /**

@@ -68,6 +68,26 @@ public class WebToMcMessageSender {
   }
 
   /**
+   * Send auth token saved notification to MC
+   */
+  public void sendAuthTokenSaved(String mcid, String uuid, String authToken) {
+    try {
+      ObjectNode message = objectMapper.createObjectNode();
+      message.put("type", "mc_auth_token_saved");
+      message.put("mcid", mcid);
+      message.put("uuid", uuid);
+      message.put("authToken", authToken);
+      message.put("timestamp", System.currentTimeMillis());
+
+      sendMessage(message, "mc_auth_token_saved");
+      logger.info("✅ Auth token saved notification sent to MC: {} ({})", mcid, uuid);
+    } catch (Exception e) {
+      logger.error("❌ Failed to send auth token saved notification to MC: {} ({})", mcid, uuid, e);
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
    * Send command to MC
    */
   public void sendCommand(String commandType, String playerName, Object data) {
