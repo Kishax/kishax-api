@@ -21,6 +21,9 @@ public class MessageIdManager {
   // チャットメッセージの内容（履歴）
   private volatile String chatMessageContent = "";
 
+  // チャットメッセージのタイムスタンプ（ミリ秒）
+  private volatile long chatMessageTimestamp = 0L;
+
   /**
    * プレイヤーメッセージ情報を保持する内部クラス
    */
@@ -141,7 +144,8 @@ public class MessageIdManager {
    */
   public void setChatMessageId(String messageId) {
     this.chatMessageId = messageId;
-    logger.debug("Set chat message id: {}", messageId);
+    this.chatMessageTimestamp = System.currentTimeMillis();
+    logger.debug("Set chat message id: {} (timestamp: {})", messageId, chatMessageTimestamp);
   }
 
   /**
@@ -167,12 +171,20 @@ public class MessageIdManager {
   }
 
   /**
+   * チャットメッセージタイムスタンプを取得
+   */
+  public long getChatMessageTimestamp() {
+    return chatMessageTimestamp;
+  }
+
+  /**
    * チャットメッセージIDをクリア
    */
   public void clearChatMessageId() {
     logger.debug("Be clear chat message id: {}", chatMessageId);
     this.chatMessageId = null;
     this.chatMessageContent = "";
+    this.chatMessageTimestamp = 0L;
   }
 
   /**
@@ -182,6 +194,7 @@ public class MessageIdManager {
     playerMessages.clear();
     chatMessageId = null;
     chatMessageContent = "";
+    chatMessageTimestamp = 0L;
     logger.info("All message ids are being clear");
   }
 

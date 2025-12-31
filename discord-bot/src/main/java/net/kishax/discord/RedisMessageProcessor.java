@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.kishax.api.common.Configuration;
 import net.kishax.discord.ColorUtil;
@@ -649,6 +650,8 @@ public class RedisMessageProcessor {
 
             String content;
             String finalChatMessageId = chatMessageId;
+            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
+
             if (chatMessageId != null && existingChatContent != null && !existingChatContent.isEmpty()) {
               // 既存チャット内容に追記
               String newContent = existingChatContent + "\n" + newLine;
@@ -659,29 +662,41 @@ public class RedisMessageProcessor {
                 finalChatMessageId = null; // 強制的に新規メッセージ
                 logger.info("Chat content too long, creating new message");
               } else {
-                content = newContent;
+                // Discord新規メッセージチェック：グローバルメッセージID以降にDiscordメッセージがあれば新規送信
+                if (chatChannel != null) {
+                  long globalTimestamp = messageIdManager.getChatMessageTimestamp();
+                  if (hasNewDiscordMessages(chatChannel, chatMessageId, globalTimestamp)) {
+                    finalChatMessageId = null; // 新規メッセージとして送信
+                    content = newLine; // 新規メッセージなので追記なし
+                    logger.info("New Discord messages detected after global message, creating new message instead of editing");
+                  } else {
+                    content = newContent;
+                  }
+                } else {
+                  content = newContent;
+                }
               }
             } else {
               // 新規メッセージ
               content = newLine;
             }
 
+            String finalContent = content;
             EmbedBuilder embed = new EmbedBuilder()
-                .setDescription(content)
+                .setDescription(finalContent)
                 .setColor(ColorUtil.GREEN.getRGB());
 
-            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
             if (chatChannel != null) {
               if (finalChatMessageId != null) {
                 // 既存チャットメッセージを編集
                 chatChannel.editMessageEmbedsById(finalChatMessageId, embed.build()).queue(
-                    success -> messageIdManager.setChatMessageContent(content));
+                    success -> messageIdManager.setChatMessageContent(finalContent));
               } else {
                 // 新規チャットメッセージ
                 chatChannel.sendMessageEmbeds(embed.build()).queue(
                     message -> {
                       messageIdManager.setChatMessageId(message.getId());
-                      messageIdManager.setChatMessageContent(content);
+                      messageIdManager.setChatMessageContent(finalContent);
                     });
               }
             }
@@ -694,6 +709,8 @@ public class RedisMessageProcessor {
 
             String content;
             String finalChatMessageId = chatMessageId;
+            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
+
             if (chatMessageId != null && existingChatContent != null && !existingChatContent.isEmpty()) {
               // 既存チャット内容に追記
               String newContent = existingChatContent + "\n" + newLine;
@@ -704,29 +721,41 @@ public class RedisMessageProcessor {
                 finalChatMessageId = null; // 強制的に新規メッセージ
                 logger.info("Chat content too long, creating new message");
               } else {
-                content = newContent;
+                // Discord新規メッセージチェック：グローバルメッセージID以降にDiscordメッセージがあれば新規送信
+                if (chatChannel != null) {
+                  long globalTimestamp = messageIdManager.getChatMessageTimestamp();
+                  if (hasNewDiscordMessages(chatChannel, chatMessageId, globalTimestamp)) {
+                    finalChatMessageId = null; // 新規メッセージとして送信
+                    content = newLine; // 新規メッセージなので追記なし
+                    logger.info("New Discord messages detected after global message, creating new message instead of editing");
+                  } else {
+                    content = newContent;
+                  }
+                } else {
+                  content = newContent;
+                }
               }
             } else {
               // 新規メッセージ
               content = newLine;
             }
 
+            String finalContent = content;
             EmbedBuilder embed = new EmbedBuilder()
-                .setDescription(content)
+                .setDescription(finalContent)
                 .setColor(ColorUtil.GREEN.getRGB());
 
-            TextChannel chatChannel = jda.getTextChannelById(config.getDiscordChatChannelId());
             if (chatChannel != null) {
               if (finalChatMessageId != null) {
                 // 既存チャットメッセージを編集
                 chatChannel.editMessageEmbedsById(finalChatMessageId, embed.build()).queue(
-                    success -> messageIdManager.setChatMessageContent(content));
+                    success -> messageIdManager.setChatMessageContent(finalContent));
               } else {
                 // 新規チャットメッセージ
                 chatChannel.sendMessageEmbeds(embed.build()).queue(
                     message -> {
                       messageIdManager.setChatMessageId(message.getId());
-                      messageIdManager.setChatMessageContent(content);
+                      messageIdManager.setChatMessageContent(finalContent);
                     });
               }
             }
@@ -796,6 +825,45 @@ public class RedisMessageProcessor {
    */
   private boolean isContentTooLong(String content) {
     return content != null && content.length() > DISCORD_EMBED_MAX_LENGTH;
+  }
+
+  /**
+   * グローバルメッセージID以降にDiscordメッセージが投稿されているかチェック
+   *
+   * @param chatChannel チャットチャンネル
+   * @param globalMessageId グローバルメッセージID
+   * @param globalMessageTimestamp グローバルメッセージのタイムスタンプ（ミリ秒）
+   * @return Discord新規メッセージが存在する場合true
+   */
+  private boolean hasNewDiscordMessages(TextChannel chatChannel, String globalMessageId, long globalMessageTimestamp) {
+    try {
+      // メッセージ履歴を取得（最新50件）
+      var history = chatChannel.getHistory().retrievePast(50).complete();
+
+      // グローバルメッセージID以降のBot以外のメッセージをカウント
+      long newMessageCount = history.stream()
+          .filter(msg -> {
+            // Bot自身のメッセージは除外
+            if (msg.getAuthor().isBot()) {
+              return false;
+            }
+
+            // グローバルメッセージIDと同じまたはそれより古いメッセージは除外
+            long messageTimestamp = msg.getTimeCreated().toInstant().toEpochMilli();
+            return messageTimestamp > globalMessageTimestamp;
+          })
+          .count();
+
+      boolean hasNewMessages = newMessageCount > 0;
+      logger.debug("Checked for new Discord messages after global message (id={}, timestamp={}): found {} messages",
+                   globalMessageId, globalMessageTimestamp, newMessageCount);
+
+      return hasNewMessages;
+    } catch (Exception e) {
+      logger.error("Failed to check for new Discord messages", e);
+      // エラーの場合は安全側に倒して新規メッセージとして扱う
+      return true;
+    }
   }
 
   /**
