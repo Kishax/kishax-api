@@ -92,6 +92,25 @@ public class DiscordMessageHandler {
   }
 
   /**
+   * プレイヤーチャットイベントメッセージを生成
+   */
+  public void sendPlayerChatEvent(String playerName, String playerUuid, String message) {
+    try {
+      Map<String, Object> playerEvent = new HashMap<>();
+      playerEvent.put("type", "player_event");
+      playerEvent.put("eventType", "chat");
+      playerEvent.put("playerName", playerName);
+      playerEvent.put("playerUuid", playerUuid);
+      playerEvent.put("message", message);
+      playerEvent.put("timestamp", System.currentTimeMillis());
+
+      handleDiscordMessage(objectMapper.writeValueAsString(playerEvent));
+    } catch (Exception e) {
+      logger.error("An error occurred while sending player chat event", e);
+    }
+  }
+
+  /**
    * サーバーステータスメッセージを生成
    */
   public void sendServerStatus(String serverName, String status) {
