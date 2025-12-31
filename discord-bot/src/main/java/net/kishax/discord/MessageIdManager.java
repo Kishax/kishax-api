@@ -24,10 +24,12 @@ public class MessageIdManager {
   public static class PlayerMessageInfo {
     private final String messageId;
     private String content;
+    private final long joinTimestamp;
 
-    public PlayerMessageInfo(String messageId, String content) {
+    public PlayerMessageInfo(String messageId, String content, long joinTimestamp) {
       this.messageId = messageId;
       this.content = content;
+      this.joinTimestamp = joinTimestamp;
     }
 
     public String getMessageId() {
@@ -41,6 +43,10 @@ public class MessageIdManager {
     public void setContent(String content) {
       this.content = content;
     }
+
+    public long getJoinTimestamp() {
+      return joinTimestamp;
+    }
   }
 
   /**
@@ -50,7 +56,7 @@ public class MessageIdManager {
     if (uuid != null && messageId != null) {
       PlayerMessageInfo info = playerMessages.get(uuid);
       if (info == null) {
-        playerMessages.put(uuid, new PlayerMessageInfo(messageId, ""));
+        playerMessages.put(uuid, new PlayerMessageInfo(messageId, "", System.currentTimeMillis()));
       }
       logger.debug("Player message id is saved: {} -> {}", uuid, messageId);
     }
@@ -61,9 +67,20 @@ public class MessageIdManager {
    */
   public void putPlayerMessage(String uuid, String messageId, String content) {
     if (uuid != null && messageId != null) {
-      playerMessages.put(uuid, new PlayerMessageInfo(messageId, content != null ? content : ""));
+      playerMessages.put(uuid, new PlayerMessageInfo(messageId, content != null ? content : "", System.currentTimeMillis()));
       logger.debug("Player message is saved: {} -> {} (content length: {})", uuid, messageId, content != null ? content.length() : 0);
     }
+  }
+
+  /**
+   * プレイヤーのJoin時刻を取得
+   */
+  public Long getPlayerJoinTimestamp(String uuid) {
+    if (uuid == null) {
+      return null;
+    }
+    PlayerMessageInfo info = playerMessages.get(uuid);
+    return info != null ? info.getJoinTimestamp() : null;
   }
 
   /**

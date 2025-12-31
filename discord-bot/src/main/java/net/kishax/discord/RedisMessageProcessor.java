@@ -13,7 +13,12 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPubSub;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -349,13 +354,17 @@ public class RedisMessageProcessor {
   }
 
   private void processPlayerJoin(String playerName, String playerUuid, String serverName) {
+    long joinTimestamp = System.currentTimeMillis();
+    String joinTime = formatJapanTime(joinTimestamp);
+    String joinEmoji = getCustomEmoji("join");
+
     // test-uuidなど無効なUUIDの場合はデフォルト絵文字を使用
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(config.getBEDefaultEmojiName(), emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
-                + " server";
+            String content = (emojiString != null ? emojiString + " " : "") + playerName + " is joined at " + serverName
+                + " server\n" + joinEmoji + " " + joinTime;
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -371,8 +380,8 @@ public class RedisMessageProcessor {
       emojiManager.createOrGetEmojiId(playerName, "https://minotar.net/avatar/" + playerUuid)
           .thenAccept(emojiId -> {
             String emojiString = emojiManager.getEmojiString(playerName, emojiId);
-            String content = (emojiString != null ? emojiString : "") + playerName + " is joined at " + serverName
-                + " server";
+            String content = (emojiString != null ? emojiString + " " : "") + playerName + " is joined at " + serverName
+                + " server\n" + joinEmoji + " " + joinTime;
 
             EmbedBuilder embed = new EmbedBuilder()
                 .setDescription(content)
@@ -390,6 +399,9 @@ public class RedisMessageProcessor {
   private void processPlayerLeave(String playerName, String playerUuid, String serverName) {
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
     String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
+    Long joinTimestamp = messageIdManager.getPlayerJoinTimestamp(playerUuid);
+    String exitEmoji = getCustomEmoji("exit");
+    String alarmClockEmoji = getCustomEmoji("alarm_clock");
 
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
@@ -399,10 +411,17 @@ public class RedisMessageProcessor {
             String content;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に退出情報を追記
-              content = existingContent + "\n\n👋 Exited from " + serverName + " server";
+              content = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
+
+              // プレイ時間を追加
+              if (joinTimestamp != null) {
+                long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
+                String playtime = formatPlaytime(playtimeMillis);
+                content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+              }
             } else {
               // 新規メッセージ（Join情報がない場合）
-              content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+              content = (emojiString != null ? emojiString + " " : "") + playerName + " is exited from " + serverName
                   + " server";
             }
 
@@ -427,10 +446,17 @@ public class RedisMessageProcessor {
             String content;
             if (messageId != null && existingContent != null && !existingContent.isEmpty()) {
               // 既存内容に退出情報を追記
-              content = existingContent + "\n\n👋 Exited from " + serverName + " server";
+              content = existingContent + "\n\n" + exitEmoji + " Exited from " + serverName + " server";
+
+              // プレイ時間を追加
+              if (joinTimestamp != null) {
+                long playtimeMillis = System.currentTimeMillis() - joinTimestamp;
+                String playtime = formatPlaytime(playtimeMillis);
+                content += "\n" + alarmClockEmoji + " プレイ時間: " + playtime;
+              }
             } else {
               // 新規メッセージ（Join情報がない場合）
-              content = (emojiString != null ? emojiString : "") + playerName + " is exited from " + serverName
+              content = (emojiString != null ? emojiString + " " : "") + playerName + " is exited from " + serverName
                   + " server";
             }
 
@@ -465,7 +491,7 @@ public class RedisMessageProcessor {
               content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
             } else {
               // 新規メッセージ（Join情報がない場合）
-              content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+              content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
                   + " server";
             }
 
@@ -500,7 +526,7 @@ public class RedisMessageProcessor {
               content = existingContent + "\n\n🚶 Moved to " + serverName + " server";
             } else {
               // 新規メッセージ（Join情報がない場合）
-              content = (emojiString != null ? emojiString : "") + playerName + " is moved into " + serverName
+              content = (emojiString != null ? emojiString + " " : "") + playerName + " is moved into " + serverName
                   + " server";
             }
 
@@ -596,6 +622,46 @@ public class RedisMessageProcessor {
 
     // 正規のUUID形式チェック（8-4-4-4-12文字）
     return !uuid.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  }
+
+  /**
+   * タイムスタンプを日本時間でフォーマット
+   * フォーマット: "MMM d, HH:mm:ss" (例: "Dec 31, 14:30:45")
+   */
+  private String formatJapanTime(long timestampMillis) {
+    ZonedDateTime jst = Instant.ofEpochMilli(timestampMillis)
+        .atZone(ZoneId.of("Asia/Tokyo"));
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d, HH:mm:ss", Locale.ENGLISH);
+    return jst.format(formatter);
+  }
+
+  /**
+   * プレイ時間をフォーマット
+   * フォーマット: "HH:mm:ss" (例: "01:08:21")
+   */
+  private String formatPlaytime(long playtimeMillis) {
+    long seconds = playtimeMillis / 1000;
+    long hours = seconds / 3600;
+    long minutes = (seconds % 3600) / 60;
+    long secs = seconds % 60;
+    return String.format("%02d:%02d:%02d", hours, minutes, secs);
+  }
+
+  /**
+   * カスタム絵文字を取得（名前から）
+   * フォーマット: <:emoji_name:emoji_id>
+   */
+  private String getCustomEmoji(String emojiName) {
+    try {
+      var emojis = jda.getEmojisByName(emojiName, true);
+      if (!emojis.isEmpty()) {
+        var emoji = emojis.get(0);
+        return emoji.getFormatted();
+      }
+    } catch (Exception e) {
+      logger.warn("Failed to get custom emoji: {}", emojiName, e);
+    }
+    return "";
   }
 
   /**
