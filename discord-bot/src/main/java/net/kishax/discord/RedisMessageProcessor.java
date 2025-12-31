@@ -364,12 +364,18 @@ public class RedisMessageProcessor {
     String messageId = messageIdManager.getPlayerMessageId(playerUuid);
     Long exitTimestamp = messageIdManager.getPlayerExitTimestamp(playerUuid);
 
+    // デバッグログ: 再Join判定の状態を出力
+    logger.info("DEBUG processPlayerJoin: player={}, messageId={}, exitTimestamp={}",
+                playerName, messageId, exitTimestamp);
+
     if (messageId != null && exitTimestamp != null && exitTimestamp > 0) {
       // Exit時刻が存在する = 再Join → Move処理として既存メッセージを更新
       logger.info("Player {} re-joined after exit, treating as move to {}", playerName, serverName);
       processPlayerMove(playerName, playerUuid, serverName);
       return;
     }
+
+    logger.info("DEBUG: Processing as new Join (not re-join)");
 
     // test-uuidなど無効なUUIDの場合はデフォルト絵文字を使用
     if (isInvalidUuid(playerUuid)) {
