@@ -576,6 +576,13 @@ public class RedisMessageProcessor {
     String existingContent = messageIdManager.getPlayerMessageContent(playerUuid);
     String moveEmoji = getCustomEmoji("move");
 
+    // 既存メッセージに"Exit"が含まれている場合 → 新規Join扱いにする
+    if (messageId != null && existingContent != null && existingContent.contains("Exit")) {
+      logger.info("Player {} has Exit in existing message, treating Move as new Join", playerName);
+      processPlayerJoin(playerName, playerUuid, serverName);
+      return;
+    }
+
     if (isInvalidUuid(playerUuid)) {
       emojiManager.createOrGetEmojiId(config.getBEDefaultEmojiName())
           .thenAccept(emojiId -> {
