@@ -346,6 +346,10 @@ public class RedisMessageProcessor {
     String playerUuid = json.path("playerUuid").asText();
     String serverName = json.path("serverName").asText("");
 
+    // DEBUG: 受信したイベントタイプを全て記録
+    logger.info("DEBUG processPlayerEventMessage: eventType={}, player={}, server={}",
+                eventType, playerName, serverName);
+
     switch (eventType) {
       case "join", "test_join" -> processPlayerJoin(playerName, playerUuid, serverName);
       case "leave" -> processPlayerLeave(playerName, playerUuid, serverName);
