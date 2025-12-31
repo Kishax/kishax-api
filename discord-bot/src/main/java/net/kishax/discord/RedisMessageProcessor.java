@@ -372,11 +372,10 @@ public class RedisMessageProcessor {
     if (messageId != null && existingContent != null && existingContent.contains("Exit")) {
       logger.info("Player {} has Exit in existing message, creating new Join message", playerName);
       messageIdManager.removePlayerMessageId(playerUuid); // 古いメッセージIDを削除
-      messageId = null; // 新規作成フラグ
-    }
-
-    // 既存メッセージIDがある場合 → Move処理
-    if (messageId != null) {
+      // ここでmessageIdをnullにせず、そのまま新規Join処理を続行
+      // processPlayerMoveは呼ばない
+    } else if (messageId != null) {
+      // Exitが含まれていない既存メッセージIDがある場合のみ → Move処理
       logger.info("Player {} re-joined, treating as move to {}", playerName, serverName);
       processPlayerMove(playerName, playerUuid, serverName);
       return;
