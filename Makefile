@@ -14,7 +14,7 @@ RESET := \033[0m
 PROJECT_NAME := kishax-api
 VERSION := 1.0.7
 
-.PHONY: help test-local test-prod publish install-no-tests lint security-scan
+.PHONY: help test-local test-prod publish install-no-tests lint security-scan build-image-all upload-image-all deploy-image-all
 
 help: ## Show this help message
 	@echo "$(BOLD)Kishax API Multi-Module Project$(RESET)"
@@ -68,3 +68,55 @@ security-scan: ## Run security vulnerability scan
 	@echo "$(BLUE)🔒 Running security scan...$(RESET)"
 	mvn org.owasp:dependency-check-maven:check
 	@echo "$(GREEN)✅ Security scan completed!$(RESET)"
+
+# =============================================================================
+# DockerイメージS3アップロード (ローカル側で実行)
+# =============================================================================
+
+S3_BUCKET := kishax-production-docker-images
+S3_PATH := api
+AWS_PROFILE := AdministratorAccess-126112056177
+
+# Image names
+IMAGE_MC_AUTH := kishax-api-mc-auth
+IMAGE_DISCORD_BOT := kishax-api-discord-bot
+IMAGE_SQS_BRIDGE := kishax-api-sqs-redis-bridge-web
+IMAGE_TAG := latest
+
+build-image-all: ## 全Dockerイメージをビルド (linux/amd64)
+	@echo "Building mc-auth image for linux/amd64..."
+	docker build --platform linux/amd64 -f Dockerfile.mc-auth -t $(IMAGE_MC_AUTH):$(IMAGE_TAG) .
+	@echo "Building discord-bot image for linux/amd64..."
+	docker build --platform linux/amd64 -f discord-bot/Dockerfile -t $(IMAGE_DISCORD_BOT):$(IMAGE_TAG) ./discord-bot
+	@echo "Building sqs-redis-bridge-web image for linux/amd64..."
+	docker build --platform linux/amd64 -f Dockerfile.sqs-redis-bridge -t $(IMAGE_SQS_BRIDGE):$(IMAGE_TAG) .
+	@echo "Build complete!"
+
+upload-image-all: ## 全DockerイメージをS3にアップロード
+	@echo "Saving and uploading mc-auth image..."
+	docker save $(IMAGE_MC_AUTH):$(IMAGE_TAG) | gzip > $(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz
+	aws s3 cp $(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz \
+		--profile $(AWS_PROFILE)
+	rm $(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz
+	@echo "mc-auth image uploaded!"
+
+	@echo "Saving and uploading discord-bot image..."
+	docker save $(IMAGE_DISCORD_BOT):$(IMAGE_TAG) | gzip > $(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz
+	aws s3 cp $(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz \
+		--profile $(AWS_PROFILE)
+	rm $(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz
+	@echo "discord-bot image uploaded!"
+
+	@echo "Saving and uploading sqs-redis-bridge-web image..."
+	docker save $(IMAGE_SQS_BRIDGE):$(IMAGE_TAG) | gzip > $(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz
+	aws s3 cp $(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz \
+		--profile $(AWS_PROFILE)
+	rm $(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz
+	@echo "sqs-redis-bridge-web image uploaded!"
+
+	@echo "All images uploaded successfully!"
+
+deploy-image-all: build-image-all upload-image-all ## 全Dockerイメージをビルド→S3アップロード
