@@ -83,6 +83,7 @@ services:
 
   # SQS Redis Bridge Service - Web用 (Redis #2)
   sqs-redis-bridge-web:
+    image: kishax-api-sqs-redis-bridge-web:latest
     build:
       context: .
       dockerfile: Dockerfile.sqs-redis-bridge
@@ -116,6 +117,7 @@ services:
 
   # MC Authentication Service
   mc-auth:
+    image: kishax-api-mc-auth:latest
     build:
       context: .
       dockerfile: Dockerfile.mc-auth
@@ -136,6 +138,7 @@ services:
 
   # Discord Bot Service
   discord-bot:
+    image: kishax-api-discord-bot:latest
     build:
       context: ./discord-bot
       dockerfile: Dockerfile
