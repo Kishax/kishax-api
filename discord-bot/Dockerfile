@@ -1,39 +1,42 @@
-# Discord Bot Dockerfile
-FROM eclipse-temurin:21-jdk
+# Builder stage
+FROM eclipse-temurin:21-jdk AS builder
 
-# 作業ディレクトリを設定
 WORKDIR /app
-
-# 必要なツールをインストール
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
-# Build the Kishax plugins
+# Build the Discord Bot
 RUN if [ ! -f build/libs/discord-bot-*.jar ]; then \
       echo "JAR not found, building from source..."; \
       chmod +x ./gradlew && \
       ./gradlew build --no-daemon; \
     else \
-      echo "discord-bot plugins already built, skipping build step"; \
+      echo "discord-bot already built, skipping build step"; \
     fi
 
-# ログディレクトリを作成
+# Runtime stage - Alpine JRE for minimal size
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create logs directory
 RUN mkdir -p /app/logs
 
-# 非rootユーザーを作成
-RUN groupadd -r discord-bot && \
-    useradd -r -g discord-bot discord-bot && \
+# Create non-root user
+RUN addgroup -S discord-bot && \
+    adduser -S -G discord-bot discord-bot && \
     chown -R discord-bot:discord-bot /app
 
-# ユーザーを切り替え
+# Copy only the JAR from builder
+COPY --from=builder --chown=discord-bot:discord-bot /app/build/libs/discord-bot-1.0.0.jar /app/discord-bot.jar
+
 USER discord-bot
 
-# ヘルスチェック
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
-# アプリケーションを実行
-CMD ["java", "-jar", "/app/build/libs/discord-bot-1.0.0.jar"]
+CMD ["java", "-jar", "/app/discord-bot.jar"]

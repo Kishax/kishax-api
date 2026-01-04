@@ -12,11 +12,11 @@ COPY . .
 # Build the MC Auth API only
 RUN mvn clean package -pl mc-auth -am -DskipTests
 
-# Runtime stage
-FROM eclipse-temurin:21-jre
+# Runtime stage - Alpine JRE for minimal size
+FROM eclipse-temurin:21-jre-alpine
 
 # Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache curl
 
 # Set working directory
 WORKDIR /app
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=builder /app/mc-auth/target/mc-auth-*-with-dependencies.jar mc-auth.jar
 
 # Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser && \
+RUN addgroup -S appuser && adduser -S -G appuser appuser && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
