@@ -39,3 +39,4 @@ CMD ["java", "-jar", "/app/sqs-redis-bridge.jar"]
 
 
 
+
