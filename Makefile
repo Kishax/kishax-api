@@ -14,7 +14,7 @@ RESET := \033[0m
 PROJECT_NAME := kishax-api
 VERSION := 1.0.7
 
-.PHONY: help test-local test-prod publish install-no-tests lint security-scan build-image-all upload-image-all deploy-image-all
+.PHONY: help test-local test-prod publish install-no-tests lint security-scan build-image-all upload-image-all load-image-all deploy-image-all
 
 help: ## Show this help message
 	@echo "$(BOLD)Kishax API Multi-Module Project$(RESET)"
@@ -118,5 +118,32 @@ upload-image-all: ## 全DockerイメージをS3にアップロード
 	@echo "sqs-redis-bridge-web image uploaded!"
 
 	@echo "All images uploaded successfully!"
+
+load-image-all: ## 全DockerイメージをS3からダウンロード＆ロード
+	@echo "Downloading and loading mc-auth image..."
+	aws s3 cp \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz \
+		$(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz
+	gunzip -c $(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz | docker load
+	rm $(IMAGE_MC_AUTH)-$(IMAGE_TAG).tar.gz
+	@echo "mc-auth image loaded!"
+
+	@echo "Downloading and loading discord-bot image..."
+	aws s3 cp \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz \
+		$(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz
+	gunzip -c $(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz | docker load
+	rm $(IMAGE_DISCORD_BOT)-$(IMAGE_TAG).tar.gz
+	@echo "discord-bot image loaded!"
+
+	@echo "Downloading and loading sqs-redis-bridge-web image..."
+	aws s3 cp \
+		s3://$(S3_BUCKET)/$(S3_PATH)/$(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz \
+		$(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz
+	gunzip -c $(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz | docker load
+	rm $(IMAGE_SQS_BRIDGE)-$(IMAGE_TAG).tar.gz
+	@echo "sqs-redis-bridge-web image loaded!"
+
+	@echo "All images loaded successfully!"
 
 deploy-image-all: build-image-all upload-image-all ## 全Dockerイメージをビルド→S3アップロード
